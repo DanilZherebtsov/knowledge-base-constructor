@@ -2,7 +2,7 @@
   "base": 14,
   "mechanics": {
     "roles": 1,
-    "spec-lifecycle": 1,
+    "spec-lifecycle": 2,
     "question-lifecycle": 1,
     "decision-lifecycle": 1,
     "claim-graph": 1
