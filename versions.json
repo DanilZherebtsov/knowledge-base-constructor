@@ -1,15 +1,15 @@
 {
-  "base": 20,
+  "base": 21,
   "mechanics": {
     "roles": 1,
-    "spec-lifecycle": 3,
+    "spec-lifecycle": 4,
+    "software-engineering": 1,
     "question-lifecycle": 1,
     "decision-lifecycle": 1,
-    "claim-graph": 1,
-    "codebase": 1
+    "claim-graph": 1
   },
   "presets": {
-    "saas-product": 1,
+    "saas-product": 2,
     "research-project": 1,
     "business-run-general": 1
   }

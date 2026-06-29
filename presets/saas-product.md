@@ -1,6 +1,6 @@
 # Манифест пресета: saas-product
 
-version:       7            # строка-метка CLAUDE.md = «saas-product · v7»
+version:       8            # версия манифеста пресета; в отпечатке сборки — saas-product@<versions.json>
 title-word:    "продукт"
 central-type:  architecture  (добавлен к базовым decisions/discovery/synthesis/principles)
 authority:     "Код побеждает вики (классы с src/). S7b локализации цитат НЕТ — это research."
@@ -14,7 +14,7 @@ interview:     # INTERVIEW-Q
 raw-defaults:  [discovery/, decisions/, technical/, (business/), (brainstorms/)]   # БЕЗ «прочее/» — это base/business catch-all, у saas его нет
 domain-lint:   "Code drift центрального типа: страницы type: architecture без поля implementation: или с битыми путями в нём (код переименован/удалён — страница ссылается в пустоту)."
 close-op:      none   # saas не пишет доменную операцию закрытия в wiki/log.md (явно «saas: нет» в CLOSE-OP)
-mechanics:     [spec-lifecycle]
+mechanics:     [spec-lifecycle, software-engineering]
 
 ---
 
@@ -26,10 +26,11 @@ mechanics:     [spec-lifecycle]
 - **KNOWLEDGE-UNIT.** Дефолт — страница (saas не переопределяет на `claim`).
 - **ROLES-FILL.** Не применяется: у saas нет `roles/` и `roles.md` (роли отложены, ADR-0004). Механика `roles` НЕ в списке.
 
-## Механики (обоснование выбора из {roles, claim-graph, spec-lifecycle, question-lifecycle, decision-lifecycle})
+## Механики (обоснование выбора из {roles, claim-graph, spec-lifecycle, software-engineering, question-lifecycle, decision-lifecycle})
 
-- **spec-lifecycle** — ВКЛ. Есть `methodology/spec-lifecycle.md`, слой `specs/`, раздел «Поток task-спек» и «Спринты» в CLAUDE.md, S6-указатель.
-- **roles** — ВЫКЛ. Нет `roles/`, нет `roles.md`, в CLAUDE.md удалён раздел «Роли»; в bootstrap нет строки «Роли — заранее не заводим».
+- **spec-lifecycle** — ВКЛ (единица работы). `methodology/spec-lifecycle.md`, слой `specs/`, раздел «Поток task-спек» и «Спринты» в CLAUDE.md, S6-указатель.
+- **software-engineering** — ВКЛ (компетенция кода). `methodology/software-engineering.md`, код-папка / `src/` / `data/`, always-on строка цикла исполнения в «фаза действуй», правило runtime-`data/`, слоты OWNED-CODE/S4/S7. Работает в паре со `spec-lifecycle`: спека — единица работы, эта механика — исполнение. Образцы ролей `_разработчик`/`_релиз-менеджер` НЕ ставятся (roles ВЫКЛ).
+- **roles** — ВЫКЛ. Нет `roles/`, нет `roles.md`, в CLAUDE.md удалён раздел «Роли»; в bootstrap нет строки «Роли — заранее не заводим». Поэтому образцы продуктовых ролей из `software-engineering` не ставятся.
 - **claim-graph** — ВЫКЛ. Центральный тип `architecture`, а не `claims`; KNOWLEDGE-UNIT = страница, не claim.
 - **question-lifecycle** — ВЫКЛ. Нет `question-lifecycle.md`, CLOSE-OP = none (а не `question-closed`).
 - **decision-lifecycle** — ВЫКЛ. Нет `decision-lifecycle.md`, CLOSE-OP = none (а не `decision-closed`); STATE без «Календаря обязательств».
