@@ -52,7 +52,7 @@ mechanics:     [claim-graph, question-lifecycle]
 - **claim-graph** — граф `supports / contradicts / refines` между claim'ами; обратный поиск по `sources:`, evidence-карта, инвентарь противоречий (особые формы query); claim-связи чинятся на lint.
 - **question-lifecycle** — поток исследовательского вопроса: повестка в STATE → рабочий файл `output/q-NNN-<slug>.md` → извлечение канона в claims/synthesis/decisions/principles. Файл `methodology/question-lifecycle.md`.
 
-## Механики, НЕ используемые (для контроля сборки)
+## Роли и неиспользуемые механики (для контроля сборки)
 
-- **roles** — отказ (ADR-0004); в methodology research НЕТ файла `roles.md`, в CLAUDE.md НЕТ раздела «Роли», в bootstrap НЕТ строки про роли. Конструктор НЕ должен тащить roles.md / раздел «Роли» / ROLES-FILL.
+- **roles** — **базовая универсальная машинерия, не механика класса** (ADR-0027): `methodology/roles.md`, `roles/_шаблон.md`, раздел «Роли», строка в bootstrap — всегда из base. research **заполняет `ROLES-FILL`** исследовательскими примерами (методолог, фактчекер, рецензент-скептик); конкретные роли не пред-заводятся, `создай роль` доступно. Прежний отказ (ADR-0004) снят ADR-0027.
 - **spec-lifecycle**, **decision-lifecycle** — не применяются (это saas/business).

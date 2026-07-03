@@ -14,7 +14,7 @@ interview:     # INTERVIEW-Q
 raw-defaults:  [динамические — под названные источники + прочее/]   # business — класс с динамическим raw/ (bootstrap создаёт под дело), фиксированного набора подпапок нет
 domain-lint:   "Просроченные или близкие обязательства из STATE.md, раздел «Календарь обязательств», по которым давно не было движения"
 close-op:      "decision-closed | <выбор>"
-mechanics:     [roles, decision-lifecycle]
+mechanics:     [decision-lifecycle]   # роли — базовая универсальная машинерия, не механика класса (ADR-0027)
 
 ---
 
@@ -37,6 +37,6 @@ mechanics:     [roles, decision-lifecycle]
 
 ## Механики
 
-- **roles** — есть `methodology/roles.md` (опциональная base-механика, business её подключил — ADR-0004/0015), `roles/` с `_шаблон.md`, раздел «Роли» в CLAUDE.md.
+- **roles** — **не механика класса, а базовая универсальная машинерия** (`methodology/roles.md`, `roles/_шаблон.md`, раздел «Роли» в CLAUDE.md — всегда из base, ADR-0027). Пресет лишь заполняет `ROLES-FILL` примерами (юрист/финансист/…). Прежнее «business подключил роли как опц. механику» (ADR-0004/0015) снято ADR-0027 — роли теперь у всех.
 - **decision-lifecycle** — есть `methodology/decision-lifecycle.md` (слот S6), отсылки из CLAUDE.md «Поток решения» и из «Дисциплины» п.8.
 - НЕ используются: claim-graph (research), spec-lifecycle (saas), question-lifecycle (research).
