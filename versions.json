@@ -1,5 +1,5 @@
 {
-  "base": 24,
+  "base": 25,
   "mechanics": {
     "spec-lifecycle": 5,
     "software-engineering": 4,
@@ -8,8 +8,8 @@
     "claim-graph": 1
   },
   "presets": {
-    "saas-product": 2,
+    "saas-product": 3,
     "research-project": 1,
-    "business-run-general": 1
+    "business-run-general": 2
   }
 }
