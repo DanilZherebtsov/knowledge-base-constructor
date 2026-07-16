@@ -3,7 +3,7 @@
 version:       8            # версия манифеста пресета; в отпечатке сборки — saas-product@<versions.json>
 title-word:    "продукт"
 central-type:  architecture  (добавлен к базовым decisions/discovery/synthesis/principles)
-authority:     "Код побеждает вики (классы с src/). S7b локализации цитат НЕТ — это research."
+authority:     "Код побеждает вики (классы с src/). Локализация цитат — базовое правило (base@26), в S7 не дублируется; её lint-проверка — только у claim-graph/research."
 work-layers:   [specs/, src/, data/, scripts/]
 state-sections:[Стадия, Путь до цели, Сейчас в работе, Следующее (1–2 недели), Завершено за последнюю неделю, Блокеры и риски, Известный техдолг]
 domain-conv:   "Валюта и формат сумм — из bootstrap-интервью (универсальный вопрос вне слота, дефолта нет); ответ заполняет S8. Спец-формата цитат нет."
