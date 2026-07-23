@@ -1,8 +1,8 @@
 {
-  "base": 27,
+  "base": 28,
   "mechanics": {
-    "spec-lifecycle": 5,
-    "software-engineering": 4,
+    "spec-lifecycle": 6,
+    "software-engineering": 5,
     "question-lifecycle": 1,
     "decision-lifecycle": 1,
     "claim-graph": 2
