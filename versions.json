@@ -1,15 +1,16 @@
 {
-  "base": 32,
+  "base": 33,
   "mechanics": {
     "spec-lifecycle": 6,
     "software-engineering": 7,
     "question-lifecycle": 1,
     "decision-lifecycle": 1,
-    "claim-graph": 2
+    "claim-graph": 2,
+    "design": 1
   },
   "presets": {
-    "saas-product": 3,
-    "research-project": 2,
-    "business-run-general": 2
+    "saas-product": 4,
+    "research-project": 3,
+    "business-run-general": 3
   }
 }

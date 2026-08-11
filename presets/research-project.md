@@ -1,6 +1,6 @@
 # Манифест пресета: research-project
 
-version:       6            # строка-метка CLAUDE.md = «research-project · v6»
+version:       7            # строка-метка CLAUDE.md = «research-project · v7»
 title-word:    "исследование"
 central-type:  claims/ (добавлен вместо базового discovery/; набор типов wiki = claims/ · decisions/ · synthesis/ · principles/)
 authority:     "Источники побеждают вики (S7) + усиление claim-graph: локализация цитат — lint-проверяемо (само правило локализации — в base@26, не дублировать)"
@@ -14,7 +14,7 @@ interview:     # INTERVIEW-Q
 raw-defaults:  [literature/, fieldwork/, conversations/, decisions/, datasets/ (опц.)]
 domain-lint:   "claim со статусом active/validated, чьи Counter-evidence заметно перевешивают Evidence (кандидат на ревизию) + цитаты без локализации (список мест `<страница>:<строка> — <фрагмент>`)"
 close-op:      "question-closed | Q-NNN — со ссылками на извлечённые claim/synthesis"
-mechanics:     [claim-graph, question-lifecycle]
+mechanics:     [claim-graph, question-lifecycle, design]
 
 ---
 
@@ -54,5 +54,6 @@ mechanics:     [claim-graph, question-lifecycle]
 
 ## Роли и неиспользуемые механики (для контроля сборки)
 
+- **design** — ВКЛ (компетенция видимого; включена во всех пресетах по умолчанию, ADR-0038). `methodology/design.md`, `BRAND.md` в корне (только по согласию, предложение после приёмки), слот OWNED-DESIGN в `ingest.md`, ветка видимого в always-on диспетчере, строка порядка в «фаза действуй», фраза-действие в HELP-OPS. В интервью не спрашивается: вопрос получил бы «да» почти всегда и ничего не различает. Для research это в первую очередь презентации и схемы к результатам исследования.
 - **roles** — **базовая универсальная машинерия, не механика класса** (ADR-0027): `methodology/roles.md`, `roles/_шаблон.md`, раздел «Роли», строка в bootstrap — всегда из base. research **заполняет `ROLES-FILL`** исследовательскими примерами (методолог, фактчекер, рецензент-скептик); конкретные роли не пред-заводятся, `создай роль` доступно. Прежний отказ (ADR-0004) снят ADR-0027.
 - **spec-lifecycle**, **decision-lifecycle** — не применяются (это saas/business).

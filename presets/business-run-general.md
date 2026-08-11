@@ -1,6 +1,6 @@
 # Манифест пресета: business-run-general
 
-version:       8            # строка-метка CLAUDE.md = «business-run-general · v8»
+version:       9            # строка-метка CLAUDE.md = «business-run-general · v9»
 title-word:    "дело"
 central-type:  entities/  (добавлен к базовым decisions/discovery/synthesis/principles)
 authority:     "Источники побеждают вики"  (локализация цитат — базовое правило всех классов с base@26; в S7 не дублируется. Её lint-проверка — только у claim-graph/research)
@@ -14,7 +14,7 @@ interview:     # INTERVIEW-Q
 raw-defaults:  [динамические — под названные источники + прочее/]   # business — класс с динамическим raw/ (bootstrap создаёт под дело), фиксированного набора подпапок нет
 domain-lint:   "Просроченные или близкие обязательства из STATE.md, раздел «Календарь обязательств», по которым давно не было движения"
 close-op:      "decision-closed | <выбор>"
-mechanics:     [decision-lifecycle]   # роли — базовая универсальная машинерия, не механика класса (ADR-0027)
+mechanics:     [decision-lifecycle, design]   # роли — базовая универсальная машинерия, не механика класса (ADR-0027)
 
 ---
 
@@ -39,4 +39,5 @@ mechanics:     [decision-lifecycle]   # роли — базовая универ
 
 - **roles** — **не механика класса, а базовая универсальная машинерия** (`methodology/roles.md`, `roles/_шаблон.md`, раздел «Роли» в CLAUDE.md — всегда из base, ADR-0027). Пресет лишь заполняет `ROLES-FILL` примерами (юрист/финансист/…). Прежнее «business подключил роли как опц. механику» (ADR-0004/0015) снято ADR-0027 — роли теперь у всех.
 - **decision-lifecycle** — есть `methodology/decision-lifecycle.md` (слот S6), отсылки из CLAUDE.md «Поток решения» и из «Дисциплины» п.8.
+- **design** — ВКЛ (компетенция видимого; включена во всех пресетах по умолчанию, ADR-0038). `methodology/design.md`, `BRAND.md` в корне (только по согласию, предложение после приёмки), слот OWNED-DESIGN в `ingest.md`, ветка видимого в always-on диспетчере, строка порядка в «фаза действуй», фраза-действие в HELP-OPS. В интервью не спрашивается: вопрос получил бы «да» почти всегда и ничего не различает. Для ведения дела это в первую очередь **презентации** (клиентам, инвесторам, на совет) и оформление документов — класс без кода, поэтому механика работает самостоятельно, без цикла кода.
 - НЕ используются: claim-graph (research), spec-lifecycle (saas), question-lifecycle (research).
