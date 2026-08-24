@@ -6,7 +6,7 @@
     "question-lifecycle": 1,
     "decision-lifecycle": 1,
     "claim-graph": 2,
-    "design": 1
+    "design": 2
   },
   "presets": {
     "saas-product": 4,
