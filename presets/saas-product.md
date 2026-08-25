@@ -1,6 +1,6 @@
 # Манифест пресета: saas-product
 
-version:       9            # версия манифеста пресета; в отпечатке сборки — saas-product@<versions.json>
+version:       10           # версия манифеста пресета; в отпечатке сборки — saas-product@<versions.json>
 title-word:    "продукт"
 central-type:  architecture  (добавлен к базовым decisions/discovery/synthesis/principles)
 authority:     "Код побеждает вики (классы с src/). Локализация цитат — базовое правило (base@26), в S7 не дублируется; её lint-проверка — только у claim-graph/research."
@@ -9,9 +9,8 @@ state-sections:[Стадия, Путь до цели, Сейчас в работ
 domain-conv:   "Валюта и формат сумм — из bootstrap-интервью (универсальный вопрос вне слота, дефолта нет); ответ заполняет S8. Спец-формата цитат нет."
 interview:     # INTERVIEW-Q
   - "Что за продукт и для кого; текущая стадия?"
-  - "Какие источники будут приходить (интервью/discovery, заметки решений, техдокументация)?"
   - "Уже есть код (src/) или runtime-данные (data/)?"
-raw-defaults:  [discovery/, decisions/, technical/, (business/), (brainstorms/)]   # БЕЗ «прочее/» — это base/business catch-all, у saas его нет
+raw-defaults:  [discovery/, decisions/, technical/, business/, brainstorms/]   # словарь имён для ingest, не список создаваемых папок; БЕЗ «прочее/» — это base/business catch-all, у saas его нет
 domain-lint:   "Code drift центрального типа: страницы type: architecture без поля implementation: или с битыми путями в нём (код переименован/удалён — страница ссылается в пустоту)."
 close-op:      none   # saas не пишет доменную операцию закрытия в wiki/log.md (явно «saas: нет» в CLOSE-OP)
 mechanics:     [spec-lifecycle, software-engineering, design]

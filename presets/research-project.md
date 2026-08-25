@@ -1,6 +1,6 @@
 # Манифест пресета: research-project
 
-version:       7            # строка-метка CLAUDE.md = «research-project · v7»
+version:       8            # версия манифеста пресета; в отпечатке сборки — research-project@<versions.json>
 title-word:    "исследование"
 central-type:  claims/ (добавлен вместо базового discovery/; набор типов wiki = claims/ · decisions/ · synthesis/ · principles/)
 authority:     "Источники побеждают вики (S7) + усиление claim-graph: локализация цитат — lint-проверяемо (само правило локализации — в base@26, не дублировать)"
@@ -9,9 +9,8 @@ state-sections:[Стадия, Путь до цели, Сейчас в работ
 domain-conv:   "Цитаты с локализацией: литература `(Smith 2024, p. 47)` / `(Smith 2024, §3.2)`; полевые `[interview-jones-2026-04-12.md, мин. 14:30]`; web — с фрагментом-якорем. Без локализации — `[требует уточнения локации]`"
 interview:     # INTERVIEW-Q
   - "Главный исследовательский вопрос и аудитория результата?"
-  - "Какие источники будут приходить (литература, полевые данные, переписка с экспертами)?"
   - "Будут ли собственные датасеты (data/) или код анализа (src/)?"
-raw-defaults:  [literature/, fieldwork/, conversations/, decisions/, datasets/ (опц.)]
+raw-defaults:  [literature/, fieldwork/, conversations/, decisions/, datasets/]   # словарь имён для ingest, не список создаваемых папок
 domain-lint:   "claim со статусом active/validated, чьи Counter-evidence заметно перевешивают Evidence (кандидат на ревизию) + цитаты без локализации (список мест `<страница>:<строка> — <фрагмент>`)"
 close-op:      "question-closed | Q-NNN — со ссылками на извлечённые claim/synthesis"
 mechanics:     [claim-graph, question-lifecycle, design]
