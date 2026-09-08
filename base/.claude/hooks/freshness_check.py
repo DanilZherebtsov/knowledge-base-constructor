@@ -3,7 +3,7 @@
 cannot silently skip the start-of-session freshness check, and re-grounds the
 model in project files right after a context compaction.
 
-Reads wiki/log.md (last full `lint` run) and STATE.md (`_Обновлено:` date),
+Reads wiki/log.md (last full `lint` run) and STATE.md (`_Обновлено:` / `_Updated:`),
 compares against today, and — ONLY when something is past threshold — emits a
 SessionStart `additionalContext` payload instructing the model to raise it in
 its first reply, in the user's language. Nothing stale → no output (silent),
@@ -130,10 +130,23 @@ def last_lint_date(root: str):
 
 
 def state_updated_date(root: str):
+    """Date from the `_Обновлено:_` / `_Updated:_` marker on STATE.md line 3.
+
+    Both markers are matched because this file is byte-identical in the RU and
+    EN constructor mirrors while `base/STATE.md` is localized: the RU edition
+    carries `_Обновлено:`, the EN one `_Updated:`. Matching only the RU marker
+    made this check dead from birth in every EN-assembled project — silently,
+    since a missing marker is indistinguishable from a fresh STATE here.
+
+    Anchored to the start of the line on purpose: `_Updated: <date>_` is also
+    the trailing stamp of every `wiki/index.md` entry (see index-log-format.md),
+    so an unanchored search would take such a line — pasted into STATE.md above
+    the real marker — for the STATE date and report a stale STATE that is fresh.
+    """
     path = os.path.join(root, "STATE.md")
     if not os.path.isfile(path):
         return None
-    pat = re.compile(r"_Обновлено:\s*([0-9.\-]+)_")
+    pat = re.compile(r"^_(?:Обновлено|Updated):\s*([0-9.\-]+)_")
     with open(path, encoding="utf-8") as fh:
         for line in fh:
             m = pat.search(line)
@@ -157,7 +170,7 @@ def main() -> int:
         age = (today - ld).days
         if age > THRESHOLD_DAYS:
             deviations.append(
-                f"- Prophylaxis (lint / «профилактика»): last full run was {age} days ago "
+                f"- Maintenance (the `lint` operation): last full run was {age} days ago "
                 f"(threshold {THRESHOLD_DAYS}). Offer to run it."
             )
 
