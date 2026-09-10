@@ -10,6 +10,27 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v python3 >/dev/null 2>&1 && python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/consent_nudge.py\" || true"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 90,
+            "command": "command -v python3 >/dev/null 2>&1 && python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/judge.py\" || true"
+          }
+        ]
+      }
     ]
   }
 }
