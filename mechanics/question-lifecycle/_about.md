@@ -13,7 +13,7 @@
 - `methodology/question-lifecycle.md` — кладётся (сама механика).
 - `methodology/state-rules.md` — наполняется тело (S5-регион + правило 2б) из `state-rules-body.md`.
 - `CLAUDE.md` (целевой) — добавляется указатель на S6 и проверяется пункт дисциплины «синтез при закрытии единицы работы».
-- `STATE.md` (целевой) — рабочие файлы вопросов ссылаются из разделов 3–5 и 7.
+- `STATE.md` (целевой) — рабочие файлы вопросов ссылаются из разделов 3–5.
 - `wiki/claims/`, `wiki/synthesis/`, `wiki/decisions/`, `wiki/principles/`, `wiki/log.md` — целевые типы, куда уезжает извлечённый канон и запись `question-closed | Q-NNN`.
 - `output/` — рабочий файл активного вопроса `q-NNN-<slug>.md`.
 
