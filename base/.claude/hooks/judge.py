@@ -24,6 +24,18 @@ def text_of(content):
     return None
 
 
+SEPARATOR = re.compile(r"^[ \t*_>]*(Остальное\s*[—–-]+\s*решать сейчас не нужно|The rest\s*[—–-]+\s*no decision needed now)", re.M | re.I)
+
+
+def asks_human(reply):
+    """The top part of a two-part reply (above the separator line; the whole reply if there is none) asks the human
+    something: any "?" outside code blocks and quoted lines. The question no longer sits at the very end of the reply."""
+    m = SEPARATOR.search(reply)
+    top = reply[:m.start()] if m else reply
+    top = re.sub(r"```.*?```|`[^`\n]*`", "", top, flags=re.S)
+    return any("?" in line for line in top.splitlines() if not line.lstrip().startswith(">"))
+
+
 def is_offer(text):
     """An offer is a question near a mention of project memory / the wiki (the question may be its own sentence)."""
     text = text or ""
@@ -103,8 +115,11 @@ def main():
         return log("SKIP declined")
     if pending or is_offer(reply):
         return log("SKIP offer")
-    if reply.endswith("?"):
+    if asks_human(reply):
         return log("SKIP question")
+    h = re.sub(r"^(?:\s*<([a-z_]+)\b[^>]*>.*?</\1>)+", "", human, flags=re.S).strip()
+    if not h.startswith("/") and re.sub(r"^\W+|\W+$", "", h).casefold() in ("проще", "simpler"):
+        return log("SKIP simpler")
     sid = str(d.get("session_id", ""))
     state_path = os.path.join(kdir, "state.json")
     try:
@@ -139,7 +154,7 @@ def main():
          "system behaves (for example, the encoding or format another system exports) DOES count, even if it was found by "
          "reading a project file.\nAnswer with exactly one line: OK - or - "
          "BLOCK: <the knowledge in a few words, in " + ("Russian" if ru else "the human's language") + ">.\n\n"
-         "HUMAN:\n" + human[-2000:] + "\n\nREPLY:\n" + reply[-4000:])
+         "HUMAN:\n" + human[-2000:] + "\n\nREPLY:\n" + (reply if len(reply) <= 4000 else reply[:2000] + "\n…\n" + reply[-2000:]))
     verdict, err = "", ""
     exe = shutil.which("claude")
     if not exe:
