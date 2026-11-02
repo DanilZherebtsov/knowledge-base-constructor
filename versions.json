@@ -1,12 +1,13 @@
 {
-  "base": 50,
+  "version": "2.0.0",
+  "base": 51,
   "mechanics": {
-    "spec-lifecycle": 8,
-    "software-engineering": 14,
-    "question-lifecycle": 2,
-    "decision-lifecycle": 2,
-    "claim-graph": 2,
-    "design": 2
+    "spec-lifecycle": 9,
+    "software-engineering": 15,
+    "question-lifecycle": 3,
+    "decision-lifecycle": 3,
+    "claim-graph": 3,
+    "design": 3
   },
   "presets": {
     "saas-product": 5,

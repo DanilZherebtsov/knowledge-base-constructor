@@ -1,0 +1,6 @@
+/README.md export-ignore
+/CHANGELOG.md export-ignore
+/versions.json export-ignore
+/migrations export-ignore
+/migrations/** export-ignore
+/.gitattributes export-ignore
