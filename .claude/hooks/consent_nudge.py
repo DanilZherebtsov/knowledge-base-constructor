@@ -19,6 +19,9 @@ out("[consent check] Write to the wiki only after the human explicitly says yes 
     "an on-topic reply is not a yes. Project memory is the wiki/ folder via ingest, not Claude Code's built-in memory. "
     "An unanswered offer is not a refusal, but do not repeat it every turn: at most one reminder per chat, in the reply "
     "that wraps up, with no reproach; you may extend a pending offer only when new facts appear. Routine code changes you just made are not worth offering.")
+out("[one answer, one question] A yes answers only a question you actually asked and never carries over to one you did not ask; "
+    "if several of your questions are open and the reply does not say which, say how you took it, and do nothing irreversible, "
+    "no wiki write and no overwrite until the human answers that one.")
 try:
     p = json.loads(raw.decode("utf-8")).get("prompt")
     if isinstance(p, str):
