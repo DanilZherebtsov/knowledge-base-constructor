@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/freshness_check.py\""
+            "command": "command -v python3 >/dev/null 2>&1 && python3 \"$CLAUDE_PROJECT_DIR/hooks/start.py\" --program claude 2>/dev/null || true"
           }
         ]
       }
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "command -v python3 >/dev/null 2>&1 && python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/consent_nudge.py\" || true"
+            "command": "command -v python3 >/dev/null 2>&1 && python3 \"$CLAUDE_PROJECT_DIR/hooks/consent.py\" --program claude 2>/dev/null || true"
           }
         ]
       }
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "command -v python3 >/dev/null 2>&1 && python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/raw_guard.py\" || true"
+            "command": "command -v python3 >/dev/null 2>&1 && python3 \"$CLAUDE_PROJECT_DIR/hooks/raw_guard.py\" --program claude 2>/dev/null || true"
           }
         ]
       }
@@ -39,7 +39,7 @@
           {
             "type": "command",
             "timeout": 90,
-            "command": "command -v python3 >/dev/null 2>&1 && python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/judge.py\" || true"
+            "command": "command -v python3 >/dev/null 2>&1 && python3 \"$CLAUDE_PROJECT_DIR/hooks/judge.py\" --program claude 2>/dev/null || true"
           }
         ]
       }

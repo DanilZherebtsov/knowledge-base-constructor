@@ -1,0 +1,49 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "d=\"$PWD\"; while [ \"$d\" != / ] && [ ! -f \"$d/.codex/hooks.json\" ]; do d=$(dirname \"$d\"); done; command -v python3 >/dev/null 2>&1 && python3 \"$d/hooks/start.py\" --program codex 2>/dev/null || true",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "d=\"$PWD\"; while [ \"$d\" != / ] && [ ! -f \"$d/.codex/hooks.json\" ]; do d=$(dirname \"$d\"); done; command -v python3 >/dev/null 2>&1 && python3 \"$d/hooks/consent.py\" --program codex 2>/dev/null || true",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "d=\"$PWD\"; while [ \"$d\" != / ] && [ ! -f \"$d/.codex/hooks.json\" ]; do d=$(dirname \"$d\"); done; command -v python3 >/dev/null 2>&1 && python3 \"$d/hooks/raw_guard.py\" --program codex 2>/dev/null || true",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "d=\"$PWD\"; while [ \"$d\" != / ] && [ ! -f \"$d/.codex/hooks.json\" ]; do d=$(dirname \"$d\"); done; command -v python3 >/dev/null 2>&1 && python3 \"$d/hooks/judge.py\" --program codex 2>/dev/null || true",
+            "timeout": 90
+          }
+        ]
+      }
+    ]
+  }
+}

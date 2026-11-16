@@ -1,0 +1,50 @@
+{
+  "outputStyle": "plain",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v python3 >/dev/null 2>&1 && python3 \"$QWEN_PROJECT_DIR/hooks/start.py\" --program qwen 2>/dev/null || true",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v python3 >/dev/null 2>&1 && python3 \"$QWEN_PROJECT_DIR/hooks/consent.py\" --program qwen 2>/dev/null || true",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "write_file|edit|notebook_edit|run_shell_command|monitor",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v python3 >/dev/null 2>&1 && python3 \"$QWEN_PROJECT_DIR/hooks/raw_guard.py\" --program qwen 2>/dev/null || true",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v python3 >/dev/null 2>&1 && python3 \"$QWEN_PROJECT_DIR/hooks/judge.py\" --program qwen 2>/dev/null || true",
+            "timeout": 90
+          }
+        ]
+      }
+    ]
+  }
+}

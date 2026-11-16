@@ -5,10 +5,10 @@ item at the end of the conversation note in raw/из-чата/ (raw/from-chat/);
 input/ or a raw/ subfolder; renaming files that agents apply as instructions (CLAUDE.md, AGENTS.md, .claude/ …)
 inside their folder — the safety step of ingest; .gitkeep. Shell commands are checked by patterns, and read-only
 listings (find, grep -l, ls) feeding a destructive command are run dry to see what they would hit — the rule in
-CLAUDE.md stays the main line, this is the seatbelt. Only ever answers "deny"; any failure of the hook lets the
-call through. Layout: the event layer (Claude Code tool calls -> operations) is separate from the policy, so an
-adapter for another program replaces only the event layer."""
-import glob, json, os, re, shlex, subprocess, sys, unicodedata
+AGENTS.md stays the main line, this is the seatbelt. Only ever answers "deny"; any failure of the hook lets the
+call through. Layout: the policy is separate from the event layers (Claude Code, Qwen Code, Codex tool calls -> operations);
+called as `python3 hooks/raw_guard.py --program claude|codex|qwen`; the project root is the folder above hooks/."""
+import glob, json, os, re, shlex, shutil, subprocess, sys, unicodedata
 
 NOTE_DIRS = ("из-чата", "from-chat")
 NOT_SOURCES = {".gitkeep", ".DS_Store", "Thumbs.db", "desktop.ini"}
@@ -241,8 +241,11 @@ def dry_list(words, cwd):
         argv = words
     else:
         return None
+    exe = shutil.which(prog)  # the system's own listing tool, never a path from the agent's command (it runs before approval)
+    if not exe or os.path.dirname(words[0]):
+        return None
     try:
-        r = subprocess.run(argv, cwd=cwd, capture_output=True, timeout=5)
+        r = subprocess.run([exe, *argv[1:]], cwd=cwd, capture_output=True, timeout=5)
         return [os.path.join(cwd, x) for x in r.stdout.decode("utf-8", "replace").splitlines() if x]
     except Exception:
         return None
@@ -321,8 +324,11 @@ def check_one(pol, args, cwd, upstream, upstream_text, depth):
                 raise Denied(q, "shell")
 
     if prog in SHELLS or prog == "eval":
-        inner = rest[rest.index("-c") + 1] if "-c" in rest and rest.index("-c") + 1 < len(rest) else (
-            " ".join(rest) if prog == "eval" else None)
+        ci = next((k for k, a in enumerate(rest) if re.fullmatch(r"-[A-Za-z]*c[A-Za-z]*", a)), None)  # -c, -lc, -euc …
+        k = ci + 1 if ci is not None else None
+        while k is not None and k < len(rest) and rest[k] == "--":
+            k += 1
+        inner = rest[k] if k is not None and k < len(rest) else (" ".join(rest) if prog == "eval" else None)
         if inner and depth < 3:
             check_shell(pol, inner, cwd, depth + 1)
     elif prog == "xargs":
@@ -487,7 +493,7 @@ def check_git(pol, rest, cwd):
             raise Denied(pol.raw + os.sep + "…", "shell")
 
 
-# ---------------------------------------------------------------- event layer: Claude Code
+# ---------------------------------------------------------------- event layers: Claude Code, Qwen Code, Codex
 
 def check_claude_event(pol, data):
     name, ti = data.get("tool_name"), data.get("tool_input") or {}
@@ -519,37 +525,165 @@ def check_claude_event(pol, data):
             check_shell(pol, cmd, os.path.realpath(cwd))
 
 
-def deny_claude(pol, d):
+QWEN_NAMES = {"write_file": "Write", "edit": "Edit", "notebook_edit": "NotebookEdit", "run_shell_command": "Bash",
+              "monitor": "Monitor"}
+
+
+def qwen_path(p):
+    """As Qwen's own tools read a path: trimmed, shell-escaped spaces unescaped."""
+    return p.strip().replace("\\ ", " ") if isinstance(p, str) else p
+
+
+def check_qwen_event(pol, data):
+    """Qwen sends Claude's fields under its own tool names; a shell call may carry its working folder in `directory`."""
+    name, ti = data.get("tool_name"), dict(data.get("tool_input") or {})
+    mapped = QWEN_NAMES.get(name, name)
+    cwd = data.get("cwd") or pol.root
+    if mapped in ("Bash", "Monitor") and isinstance(ti.get("directory"), str) and ti["directory"].strip():
+        cwd = os.path.join(cwd, os.path.expanduser(qwen_path(ti["directory"])))
+    for k in ("file_path", "notebook_path"):
+        if k in ti:
+            ti[k] = qwen_path(ti[k])
+    check_claude_event(pol, dict(data, tool_name=mapped, tool_input=ti, cwd=cwd))
+
+
+FILE_OP = re.compile(r"^\s*\*\*\* (Add|Update|Delete) File: (.+?)\s*$")
+MOVE_TO = re.compile(r"^\s*\*\*\* Move to: (.+?)\s*$")
+PATCH_BODY = re.compile(r"\*\*\* Begin Patch.*?\*\*\* End Patch", re.S)
+INVOKES_PATCH = re.compile(r"(?:^|[;&|(`]|\$\()\s*(?:sudo\s+|env\s+)?(apply_patch|applypatch)\b", re.M)  # as a command word only
+
+
+def apply_hunks(old, hunk):
+    """Apply an Update body to old text; None when it does not apply cleanly."""
+    text, chunks, cur = old, [], []
+    for line in hunk:
+        if line.startswith("@@"):
+            if cur:
+                chunks.append(cur)
+            cur = []
+        elif line[:1] in (" ", "-", "+"):
+            cur.append(line)
+        elif line == "":
+            cur.append(" ")
+    if cur:
+        chunks.append(cur)
+    for ch in chunks:
+        before = "\n".join(x[1:] for x in ch if x[0] in " -")
+        after = "\n".join(x[1:] for x in ch if x[0] in " +")
+        if before == "":
+            text = text + ("" if text.endswith("\n") or not text else "\n") + after + ("\n" if after else "")
+            continue
+        if text.count(before) != 1:
+            return None
+        text = text.replace(before, after, 1)
+    return text
+
+
+def check_patch(pol, body, cwd):
+    lines = body.replace("\r\n", "\n").split("\n")
+    i = 0
+    while i < len(lines):
+        m = FILE_OP.match(lines[i])
+        if not m:
+            i += 1
+            continue
+        kind, path = m.group(1), os.path.join(cwd, m.group(2).strip())
+        j, hunk, move = i + 1, [], None
+        while j < len(lines) and not FILE_OP.match(lines[j]) and not lines[j].strip().startswith("*** End Patch"):
+            mm = MOVE_TO.match(lines[j])
+            if mm:
+                move = os.path.join(cwd, mm.group(1).strip())
+            else:
+                hunk.append(lines[j])
+            j += 1
+        if kind == "Add":
+            pol.write(path)
+        elif kind == "Delete":
+            pol.delete(path)
+        else:
+            if any(h[:1] in ("+", "-") for h in hunk):
+                new, p = None, pol.p(path)
+                if pol.in_notes(p) and os.path.isfile(p):
+                    try:
+                        with open(p, encoding="utf-8") as f:
+                            new = apply_hunks(f.read(), hunk)
+                    except Exception:
+                        new = None
+                if new is None and pol.source(p):
+                    raise Denied(p, "edit")
+                pol.write(path, new=new)
+            if move:
+                pol.move(path, move)
+        i = j
+
+
+def check_codex_event(pol, data):
+    """Codex: file edits come as the apply_patch tool with the patch body; apply_patch can also be run from the shell
+    (heredoc, quoted body, pipe, a patch file). Shell calls arrive as tool_name "Bash" with tool_input.command."""
+    ti = data.get("tool_input") or {}
+    cwd = os.path.realpath(data.get("cwd") or pol.root)
+    if data.get("tool_name") == "apply_patch":
+        body = ti.get("command") or ti.get("patch") or ti.get("input") or ""
+        check_patch(pol, body if isinstance(body, str) else "\n".join(map(str, body)), cwd)
+        return
+    cmd = ti.get("command") if isinstance(ti.get("command"), str) else ""
+    m = INVOKES_PATCH.search(cmd)
+    if m:
+        here = cwd  # `cd X && apply_patch …`: paths in the body are relative to X
+        for cd in re.finditer(r"(?:^|[;&|(]\s*)cd\s+([^\s;&|)]+)", cmd[:m.start()]):
+            here = os.path.realpath(os.path.join(here, os.path.expanduser(cd.group(1).strip("'\""))))
+        bodies = PATCH_BODY.findall(cmd)
+        for ref in re.findall(r"(?:\bcat\s+|<\s*)([^\s;&|<>]+)", cmd):
+            try:
+                with open(os.path.join(here, os.path.expanduser(ref.strip("'\""))), encoding="utf-8") as f:
+                    bodies += PATCH_BODY.findall(f.read())
+            except Exception:
+                pass
+        for b in bodies:
+            check_patch(pol, b, here)
+        if not bodies:  # the body is not visible: with sources in raw/, refuse rather than guess
+            q = pol.sources_under(pol.raw)
+            if q:
+                raise Denied(q, "shell")
+    check_claude_event(pol, dict(data, tool_name="Bash"))
+
+
+def deny_message(pol, d):
     rel = os.path.relpath(d.path, pol.root)
-    msg = ("raw/ guard: this call would " + {"edit": "change", "delete": "delete", "move": "move", "shell": "change or delete"}[d.why]
-           + " " + rel + ", a source in raw/. The agent never edits, overwrites, renames, moves or deletes an existing raw/ "
-           "file, even on the human's direct request (CLAUDE.md, «`raw/` неизменяем» / \"`raw/` is immutable\"). "
-           "If the call was aimed at raw/: do not retry it with another tool or command; tell the human that only they can "
-           "change a source by hand, and offer to record their correction as knowledge from the conversation (a note in "
-           "raw/из-чата/ or raw/from-chat/ and a wiki page citing it and the source). If the call was not aimed at raw/ "
-           "(a broad path, pattern or project-wide edit caught it), narrow it so it leaves raw/ out. Allowed in raw/: new "
-           "files; a new item at the end of the conversation note; moving a file (not a folder) from the raw/ root into "
-           "input/ or a raw/ subfolder; renaming agent instruction files inside their folder; .gitkeep. Header and secret "
-           "removal are done in input/ before placing (methodology/ingest.md, «Что можно в `raw/`» / \"What is allowed in "
-           "`raw/`\").")
-    sys.stdout.write(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
-                                                         "permissionDecisionReason": msg}}))
+    return ("raw/ guard: this call would " + {"edit": "change", "delete": "delete", "move": "move",
+                                              "shell": "change or delete"}[d.why]
+            + " " + rel + ", a source in raw/. The agent never edits, overwrites, renames, moves or deletes an existing raw/ "
+            "file, even on the human's direct request (AGENTS.md, «`raw/` неизменяем» / \"`raw/` is immutable\"). "
+            "If the call was aimed at raw/: do not retry it with another tool or command and do not ask the human to allow it "
+            "in the program's permission prompt; tell the human that only they can change a source by hand, and offer to "
+            "record their correction as knowledge from the conversation (a note in raw/из-чата/ or raw/from-chat/ and a wiki "
+            "page citing it and the source). If the call was not aimed at raw/ (a broad path, pattern or project-wide edit "
+            "caught it), narrow it so it leaves raw/ out. Allowed in raw/: new files; a new item at the end of the "
+            "conversation note; moving a file (not a folder) from the raw/ root into input/ or a raw/ subfolder; renaming "
+            "agent instruction files inside their folder; .gitkeep. Header and secret removal are done in input/ before "
+            "placing (methodology/ingest.md, «Что можно в `raw/`» / \"What is allowed in `raw/`\").")
 
 
 def main():
+    sys.dont_write_bytecode = True
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import common
+    prog = common.program()
+    data = common.read_event()
+    common.mark_alive(prog, "guard")
+    pol = Policy(common.ROOT)
+    if not os.path.isdir(pol.raw):
+        return
     try:
-        data = json.loads(sys.stdin.buffer.read().decode("utf-8"))
-        root = os.environ.get("CLAUDE_PROJECT_DIR") or data.get("cwd") or os.getcwd()
-        pol = Policy(root)
-        if not os.path.isdir(pol.raw):
-            return
-        try:
-            check_claude_event(pol, data)
-        except Denied as d:
-            deny_claude(pol, d)
-    except Exception:
-        pass
+        {"claude": check_claude_event, "qwen": check_qwen_event, "codex": check_codex_event}[prog](pol, data)
+    except Denied as d:
+        common.deny(deny_message(pol, d))
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception:
+        pass  # any failure of the guard lets the call through
