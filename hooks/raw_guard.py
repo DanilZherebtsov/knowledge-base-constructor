@@ -194,6 +194,10 @@ def strip_prefix(words):
 
 
 def expand(cwd, token):
+    if os.name == "nt":  # Git Bash paths: /c/Users/… and /cygdrive/c/… are C:/Users/…
+        m = re.match(r"^/(?:cygdrive/)?([A-Za-z])(/.*)?$", token)
+        if m:
+            token = m.group(1) + ":" + (m.group(2) or "/")
     token = os.path.expanduser(os.path.expandvars(token.replace("$PWD", cwd).replace("${PWD}", cwd)))
     full = token if os.path.isabs(token) else os.path.join(cwd, token)
     if any(c in token for c in "*?["):
@@ -203,9 +207,17 @@ def expand(cwd, token):
     return [full]
 
 
+def _which(name, not_system=False):
+    import common  # main() has put hooks/ on sys.path
+    return common.which(name, not_system)
+
+
 def run_git(cwd, *args):
+    git = _which("git")
+    if not git:
+        return []
     try:
-        r = subprocess.run(["git", "-C", cwd, "-c", "core.quotePath=false", *args], capture_output=True, timeout=5,
+        r = subprocess.run([git, "-C", cwd, "-c", "core.quotePath=false", *args], capture_output=True, timeout=5,
                            env={**os.environ, "LC_ALL": "C", "LANG": "C"})
         return r.stdout.decode("utf-8", "replace").splitlines() if r.returncode == 0 else []
     except Exception:
@@ -241,12 +253,17 @@ def dry_list(words, cwd):
         argv = words
     else:
         return None
-    exe = shutil.which(prog)  # the system's own listing tool, never a path from the agent's command (it runs before approval)
+    exe = _which(prog, not_system=True)  # the system's own listing tool from PATH, never from the agent's command or folder (it runs before approval)
     if not exe or os.path.dirname(words[0]):
         return None
     try:
         r = subprocess.run([exe, *argv[1:]], cwd=cwd, capture_output=True, timeout=5)
-        return [os.path.join(cwd, x) for x in r.stdout.decode("utf-8", "replace").splitlines() if x]
+        listed = [os.path.join(cwd, x) for x in r.stdout.decode("utf-8", "replace").splitlines() if x]
+        # a listing that failed and printed nothing (a foreign find.exe…) is not "nothing found"; one that printed
+        # paths and then stumbled (a missing start folder, an unreadable file) still names what it would hit
+        if r.returncode and not listed and not (prog in ("grep", "egrep", "rg") and r.returncode == 1):
+            return None
+        return listed
     except Exception:
         return None
 
@@ -331,6 +348,8 @@ def check_one(pol, args, cwd, upstream, upstream_text, depth):
         inner = rest[k] if k is not None and k < len(rest) else (" ".join(rest) if prog == "eval" else None)
         if inner and depth < 3:
             check_shell(pol, inner, cwd, depth + 1)
+    elif re.sub(r"\.exe$", "", prog.lower()) in ("powershell", "pwsh", "cmd") and depth < 3:
+        check_pwsh(pol, " ".join([prog] + ['"%s"' % x if " " in x else x for x in rest]), cwd, depth + 1)
     elif prog == "xargs":
         j = 0
         while j < len(rest) and rest[j].startswith("-"):
@@ -354,8 +373,20 @@ def check_one(pol, args, cwd, upstream, upstream_text, depth):
             for k, a in enumerate(rest))
         if destructive:
             hits = dry_list(args, cwd)
-            if hits is None:
-                hits = [x for a in rest[:1] for x in expand(cwd, a)]
+            if hits is None:  # no listing to run (no Unix find here): whatever lies under a start folder counts
+                k = 0
+                while k < len(rest) and rest[k] in ("-H", "-L", "-P"):
+                    k += 1
+                starts = []
+                for a in rest[k:]:
+                    if a.startswith(("-", "(", "!")):
+                        break
+                    starts.append(a)
+                for x in [x for a in (starts or ["."]) for x in expand(cwd, a)]:
+                    q = pol.sources_under(pol.p(x))
+                    if q:
+                        raise Denied(q, "shell")
+                hits = []
             for x in hits:
                 q = pol.sources_under(pol.p(x)) if not os.path.isdir(x) or pol.in_raw(pol.p(x)) else (
                     pol.p(x) if pol.source(pol.p(x)) else None)
@@ -419,7 +450,10 @@ def check_git(pol, rest, cwd):
     dashdash = opts.index("--") if "--" in opts else None
     pathspec = opts[dashdash + 1:] if dashdash is not None else []
     words = [a for a in (opts[:dashdash] if dashdash is not None else opts) if not a.startswith("-")]
-    raw_rel = os.path.relpath(pol.raw, cwd)
+    try:
+        raw_rel = os.path.relpath(pol.raw, cwd)
+    except ValueError:  # Windows: cwd on another drive
+        raw_rel = pol.raw
 
     def changed_in_raw(*extra):
         return run_git(cwd, "status", "--porcelain", "--untracked-files=no", *extra, "--", raw_rel)
@@ -495,7 +529,278 @@ def check_git(pol, rest, cwd):
 
 # ---------------------------------------------------------------- event layers: Claude Code, Qwen Code, Codex
 
-def check_claude_event(pol, data):
+# --- PowerShell and cmd (Windows): a rough rule, not a parser -------------------------------------------------------
+# Verbs that change files; every token that leads into raw/ is a target; a destructive verb whose target can't be seen
+# (a pipe, $_, a variable, .NET, Invoke-Expression) is denied when the command names raw/ and raw/ has sources.
+# A false deny costs the agent one rephrasing; a false allow costs a spoiled source.
+PS_DELETE = {"remove-item", "rm", "del", "erase", "rd", "rmdir", "ri"}
+PS_MOVE = {"move-item", "mv", "move", "mi"}
+PS_RENAME = {"rename-item", "ren", "rename", "rni"}
+PS_COPY = {"copy-item", "cp", "copy", "cpi", "xcopy", "robocopy"}
+PS_WRITE = {"set-content", "sc", "out-file", "clear-content", "clc", "new-item", "ni", "tee-object", "tee"}
+PS_APPEND = {"add-content", "ac"}
+PS_CHANGERS = PS_DELETE | PS_MOVE | PS_RENAME | PS_COPY | PS_WRITE | PS_APPEND
+PS_PATH = {"-path", "-literalpath", "-filepath", "-pspath", "-lp"}
+PS_VALUE = PS_PATH | {"-value", "-encoding", "-itemtype", "-type", "-filter", "-include", "-exclude", "-stream", "-credential",
+                      "-inputobject", "-delimiter", "-width", "-newname", "-name", "-destination", "-outfile", "-target"}
+PS_RAW = re.compile(r"(?i)(^|[\s/\\'\"=:(,])raw([/\\]|$|[\s'\";),|])")
+PS_OPAQUE = re.compile(r"(?i)\[(?:system\.)?io\.(?:file|directory)\]::(?:write|append|delete|move|copy|replace|create)|"
+                       r"\b(?:iex|invoke-expression|invoke-command|start-process)\b|"
+                       r"\.(?:delete|moveto|copyto|writealltext|writeallbytes|appendalltext)\s*\(")
+PS_LIST = {"get-childitem", "gci", "dir", "ls", "forfiles"}
+PS_RECURSE = {"-recurse", "-r", "/s"}
+
+
+def ps_segments(cmd):
+    """Statements of a PowerShell or cmd line: lists of tokens (quotes kept), split at ; | & && || { } ( ) and newlines."""
+    segs, cur, tok, q, i = [], [], "", None, 0
+    def flush_tok():
+        nonlocal tok
+        if tok:
+            cur.append(tok)
+        tok = ""
+    def flush_seg():
+        nonlocal cur
+        flush_tok()
+        if cur:
+            segs.append(cur)
+        cur = []
+    while i < len(cmd):
+        ch = cmd[i]
+        if q:
+            tok += ch
+            if ch == "`" and q == '"' and i + 1 < len(cmd):
+                tok += cmd[i + 1]
+                i += 1
+            elif ch == q:
+                if q == "'" and cmd[i + 1:i + 2] == "'":
+                    tok += "'"
+                    i += 1
+                else:
+                    q = None
+        elif ch in "'\"":
+            q = ch
+            tok += ch
+        elif ch == "`" and i + 1 < len(cmd):
+            tok += cmd[i + 1]
+            i += 1
+        elif ch in " \t\r":
+            flush_tok()
+        elif ch in ";|&{}()\n":
+            flush_seg()
+        elif ch == ">":
+            op = tok if tok in ("", "1", "2", "3", "4", "5", "6", "*") else None
+            if op is None:
+                flush_tok()
+                op = ""
+            tok = ""
+            op += ">"
+            if cmd[i + 1:i + 2] == ">":
+                op += ">"
+                i += 1
+            if cmd[i + 1:i + 2] == "&":  # 2>&1
+                op += cmd[i + 1:i + 3]
+                i += 2
+            cur.append(op)
+        else:
+            tok += ch
+        i += 1
+    flush_seg()
+    return segs
+
+
+def ps_unquote(t):
+    return t[1:-1] if len(t) >= 2 and t[0] == t[-1] and t[0] in "'\"" else t
+
+
+def ps_paths(cwd, tok, env):
+    """Paths a token names, or None when they can't be known (a variable, $_, a subexpression)."""
+    t = ps_unquote(tok)
+    t = re.sub(r"(?i)\$\{env:(\w+)\}|\$env:(\w+)", lambda m: os.environ.get(m.group(1) or m.group(2), "\0"), t)
+    t = re.sub(r"%(\w+)%", lambda m: os.environ.get(m.group(1), "\0"), t)
+    t = re.sub(r"(?i)\$(pwd|home)\b", lambda m: cwd if m.group(1).lower() == "pwd" else os.path.expanduser("~"), t)
+    t = re.sub(r"\$(\w+)", lambda m: env.get(m.group(1).lower(), "\0"), t)
+    if "\0" in t or "$" in t or "@(" in t:
+        return None
+    if os.sep == "/":
+        t = t.replace("\\", "/")
+    return expand(cwd, t) if t else []
+
+
+def check_pwsh(pol, cmd, cwd, depth=0, from_bash=False):
+    """from_bash: a Bash-tool command of Codex or Qwen on Windows, read as PowerShell/cmd too — heredoc bodies are data."""
+    if from_bash:
+        cmd = HEREDOC.sub(lambda m: m.group(0).split("\n", 1)[0], cmd)
+    over_raw = []  # a recursive listing or deletion starts at raw/ or above it
+
+    def any_source():
+        q = pol.sources_under(pol.raw)
+        if q:
+            raise Denied(q, "shell")
+
+    names_raw = bool(PS_RAW.search(cmd))
+    if names_raw and PS_OPAQUE.search(cmd):
+        any_source()
+    for b64 in re.findall(r"(?i)(?:^|\s)-e(?:c|nc|ncodedcommand)?\s+([A-Za-z0-9+/=]{8,})", cmd):
+        try:
+            inner = __import__("base64").b64decode(b64).decode("utf-16-le")
+        except Exception:
+            inner = ""
+        if depth < 3 and inner:
+            check_pwsh(pol, inner, cwd, depth + 1)
+    env = {}
+    for seg in ps_segments(cmd):
+        words, i = [], 0
+        while i < len(seg):  # redirections first: > and >> write their target
+            w = seg[i]
+            m = re.fullmatch(r"([0-9*]?)(>>?)(&\d)?", w)
+            if m:
+                if not m.group(3) and i + 1 < len(seg) and ps_unquote(seg[i + 1]).lower() not in ("$null", "nul"):
+                    for p in ps_paths(cwd, seg[i + 1], env) or []:
+                        pol.write(p, append_only=(m.group(2) == ">>"))
+                i += 1 if m.group(3) else 2
+                continue
+            words.append(w)
+            i += 1
+        while words and words[0] in ("&", "."):
+            words = words[1:]
+        if not words:
+            continue
+        a = re.fullmatch(r"\$(\w+)\s*=?(.*)", words[0])  # $f = 'raw\a.md'
+        if a and (a.group(2) or (len(words) > 1 and words[1] == "=")):
+            val = a.group(2) or (words[2] if len(words) > 2 else "")
+            val = val[1:] if val.startswith("=") else val
+            env[a.group(1).lower()] = ps_unquote(val) if "$" not in ps_unquote(val) and "(" not in val else "\0"
+            continue
+        verb = os.path.basename(ps_unquote(words[0]).replace("\\", "/")).lower()
+        verb = verb[:-4] if verb.endswith((".exe", ".cmd", ".bat")) else verb
+        rest = words[1:]
+        if verb == "set" and rest and "=" in rest[0] and not rest[0].startswith("-"):  # cmd: set X=...
+            k, v = ps_unquote(" ".join(rest)).split("=", 1)
+            env[k.strip().lower()] = v
+            continue
+        if verb in ("powershell", "pwsh", "cmd") and depth < 3:
+            ci = next((k for k, x in enumerate(rest) if x.lower() in ("-command", "-c", "/c", "/k", "/r", "-com", "-comm")), None)
+            if ci is not None:
+                check_pwsh(pol, " ".join(ps_unquote(x) for x in rest[ci + 1:]), cwd, depth + 1)
+            continue
+        if verb in ("bash", "sh", "wsl") and depth < 3:
+            ci = next((k for k, x in enumerate(rest) if re.fullmatch(r"-[A-Za-z]*c[A-Za-z]*", x)), None)
+            if ci is not None and ci + 1 < len(rest):
+                check_shell(pol, ps_unquote(rest[ci + 1]), cwd, depth + 1)
+            continue
+        if verb in ("cd", "set-location", "sl", "chdir", "pushd", "push-location") and rest:
+            got = ps_paths(cwd, rest[-1], env)
+            cwd = got[0] if got else cwd
+            continue
+        for k, x in enumerate(rest):  # -OutFile of any command (Invoke-WebRequest …)
+            if x.lower() == "-outfile" and k + 1 < len(rest):
+                for p in ps_paths(cwd, rest[k + 1], env) or []:
+                    pol.write(p)
+        named, pos, switches, k = {}, [], set(), 0
+        while k < len(rest):
+            x = rest[k]
+            xl = x.lower()
+            if xl.startswith("-") and not re.fullmatch(r"-\d+", x):
+                key = xl.split(":", 1)[0]
+                if ":" in x:
+                    named[key] = x.split(":", 1)[1]
+                elif key in PS_VALUE and k + 1 < len(rest):
+                    named[key] = rest[k + 1]
+                    k += 1
+                else:
+                    switches.add(key)
+            elif re.fullmatch(r"/[A-Za-z?]{1,8}(:\S*)?", x):  # cmd switches /q /s /MIR …
+                switches.add(xl.split(":", 1)[0])
+            else:
+                pos += [y for y in re.split(r",(?=(?:[^'\"]*['\"][^'\"]*['\"])*[^'\"]*$)", x) if y]
+            k += 1
+        recursive = bool(PS_RECURSE & switches)
+        if recursive and (verb in PS_LIST or verb in PS_DELETE):
+            for t in ([named[p] for p in PS_PATH if p in named] + pos) or ["."]:
+                base = ps_unquote(t).replace("\\", "/")
+                base = os.path.dirname(base) or "." if any(ch in base for ch in "*?[") else base
+                for p in ps_paths(cwd, base, env) or [cwd]:
+                    p = pol.p(p)
+                    if pol.is_raw(p) or pol.above_raw(p) or pol.in_raw(p):
+                        over_raw.append(p)
+            if verb == "forfiles" and over_raw and re.search(r"(?i)\b(del|erase|rd|rmdir|move|ren|rename|copy)\b", " ".join(rest)):
+                any_source()
+            if verb in PS_DELETE and over_raw:
+                any_source()
+        if verb not in PS_CHANGERS:
+            continue
+        unseen = names_raw or bool(over_raw)  # a target that can't be seen counts as raw/ when the command reaches it
+        src_toks = [named[p] for p in PS_PATH if p in named] + pos[:1]
+        if verb in PS_DELETE:
+            targets = [named[p] for p in PS_PATH if p in named] + pos
+            if not targets:
+                if unseen:
+                    any_source()
+                continue
+            for t in targets:
+                got = ps_paths(cwd, t, env)
+                if got is None:
+                    if unseen:
+                        any_source()
+                    continue
+                for p in got:
+                    pol.delete(p)
+        elif verb in PS_WRITE or verb in PS_APPEND:
+            targets = src_toks
+            if "-name" in named and verb in ("new-item", "ni"):
+                targets = [os.path.join(ps_unquote(t), ps_unquote(named["-name"])) for t in (targets or ["."])]
+            if not targets:
+                if unseen:
+                    any_source()
+                continue
+            for t in targets:
+                got = ps_paths(cwd, t, env)
+                if got is None:
+                    if unseen:
+                        any_source()
+                    continue
+                for p in got:
+                    pol.write(p, append_only=verb in PS_APPEND or bool({"-a", "-append"} & switches))
+        else:  # move, rename, copy: a source and a destination
+            dst_tok = named.get("-destination") or named.get("-newname") or (pos[1] if len(pos) > 1 else None)
+            if not src_toks:
+                srcs = None
+            else:
+                srcs = ps_paths(cwd, src_toks[0], env)
+            dst = ps_paths(cwd, dst_tok, env) if dst_tok else None
+            if srcs is None or (dst_tok and dst is None):
+                if unseen:
+                    any_source()
+                continue
+            if verb == "robocopy":
+                if dst and ({"/mir", "/purge"} & switches):
+                    pol.delete(dst[0])
+                if {"/mov", "/move"} & switches:
+                    for sp in srcs:
+                        pol.delete(sp)
+                for sp in srcs:
+                    if dst:
+                        pol.copy_into(sp, dst[0], contents=True)
+                continue
+            if not dst:
+                if any(pol.in_raw(pol.p(sp)) for sp in srcs) and verb not in PS_COPY:
+                    any_source()
+                continue
+            for sp in srcs:
+                if verb in PS_RENAME:
+                    newname = ps_unquote(dst_tok).replace("\\", "/")
+                    target = dst[0] if "/" in newname else os.path.join(os.path.dirname(sp), newname)
+                    pol.move(sp, target)
+                elif verb in PS_MOVE:
+                    pol.move(sp, dst[0])
+                else:
+                    pol.copy_into(sp, dst[0], contents=(verb == "xcopy"))
+
+
+def check_claude_event(pol, data, windows_shell=False):
+    """windows_shell: the program's shell tool may run PowerShell or cmd on Windows (Codex, Qwen); Claude Code's Bash
+    tool is Git Bash and has a PowerShell tool of its own."""
     name, ti = data.get("tool_name"), data.get("tool_input") or {}
     cwd = data.get("cwd") or pol.root
     if name in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
@@ -519,10 +824,15 @@ def check_claude_event(pol, data):
             except Exception:
                 new = None
         pol.write(path, new=new)
-    elif name in ("Bash", "Monitor"):
+    elif name in ("Bash", "Monitor", "PowerShell"):
         cmd = ti.get("command")
         if isinstance(cmd, str):
-            check_shell(pol, cmd, os.path.realpath(cwd))
+            if name != "PowerShell":
+                check_shell(pol, cmd, os.path.realpath(cwd))
+            if name == "PowerShell":
+                check_pwsh(pol, cmd, os.path.realpath(cwd))
+            elif windows_shell and os.name == "nt":
+                check_pwsh(pol, cmd, os.path.realpath(cwd), from_bash=True)
 
 
 QWEN_NAMES = {"write_file": "Write", "edit": "Edit", "notebook_edit": "NotebookEdit", "run_shell_command": "Bash",
@@ -544,7 +854,7 @@ def check_qwen_event(pol, data):
     for k in ("file_path", "notebook_path"):
         if k in ti:
             ti[k] = qwen_path(ti[k])
-    check_claude_event(pol, dict(data, tool_name=mapped, tool_input=ti, cwd=cwd))
+    check_claude_event(pol, dict(data, tool_name=mapped, tool_input=ti, cwd=cwd), windows_shell=True)
 
 
 FILE_OP = re.compile(r"^\s*\*\*\* (Add|Update|Delete) File: (.+?)\s*$")
@@ -645,7 +955,7 @@ def check_codex_event(pol, data):
             q = pol.sources_under(pol.raw)
             if q:
                 raise Denied(q, "shell")
-    check_claude_event(pol, dict(data, tool_name="Bash"))
+    check_claude_event(pol, dict(data, tool_name="Bash"), windows_shell=True)
 
 
 def deny_message(pol, d):

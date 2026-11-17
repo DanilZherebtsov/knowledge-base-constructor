@@ -34,10 +34,10 @@ M = {
                        "the project is open in Claude Desktop: the project's automatic checks do not run there — the rules hold as "
                        "text. See the Claude Code environment file, the Claude Desktop section."),
     "claude_hooks": ("автоматические проверки проекта не запускаются в Claude Code. Обычно их выключила настройка "
-                     "`disableAllHooks` в настройках Claude Code или нет `python3`. Без них я могу не заметить устаревший план и "
+                     "`disableAllHooks` в настройках Claude Code или не найден Python 3 (ни `python3`, ни `python`, ни `py`). Без них я могу не заметить устаревший план и "
                      "забыть предложить сохранить важное.",
                      "the project's automatic checks are not running in Claude Code. Usually the `disableAllHooks` setting turned "
-                     "them off, or `python3` is missing. Without them I may miss an outdated plan and forget to offer saving."),
+                     "them off, or Python 3 is not found (neither `python3`, nor `python`, nor `py`). Without them I may miss an outdated plan and forget to offer saving."),
     "codex_limit": ("правила проекта доходят до меня не полностью: Codex читает только первые %d байт из %d. Работать по ним "
                     "сейчас нельзя — не берись за задачу, пока не исправлено. Исправляется один раз: доверить папку (тогда лимит "
                     "поднимает настройка самого проекта) или строкой `project_doc_max_bytes = 262144` в начале файла настроек "
@@ -93,10 +93,6 @@ M = {
                     "write a note that bypasses the project memory (the `wiki/` folder). To turn it off — `\"memory\": "
                     "{\"enableManagedAutoMemory\": false}` in Qwen Code's settings; please ask me to save what matters to project "
                     "memory — say 'remember this'. I won't mention this again."),
-    "windows": ("проект открыт на Windows: автоматические проверки проекта здесь пока не запускаются (их команды записаны "
-                "для Mac и Linux). Правила проекта действуют — работаю по ним, только без автоматических проверок.",
-                "the project is open on Windows: the project's automatic checks don't start here yet (their commands are written "
-                "for Mac and Linux). The project's rules apply — I work by them, just without the automatic checks."),
     "guard": ("автоматическая проверка, не дающая мне править присланные документы в папке `raw/`, не работает — похоже, она "
               "не одобрена. Правки этих документов я не делаю и без неё.",
               "the automatic check that stops me from editing received documents in `raw/` is not working — it looks "
@@ -178,7 +174,10 @@ def top_level_int(toml, key):
 
 def git_top(path):
     try:
-        top = subprocess.run(["git", "-C", path, "rev-parse", "--show-toplevel"], capture_output=True, text=True,
+        git = common.which("git")
+        if not git:
+            return None
+        top = subprocess.run([git, "-C", path, "rev-parse", "--show-toplevel"], capture_output=True, text=True,
                              timeout=10).stdout.strip()
         return os.path.realpath(top) if top else None
     except Exception:
@@ -186,12 +185,19 @@ def git_top(path):
 
 
 def codex_trusted(toml, root):
-    """Codex trusts by the exact project path (the git root when the folder is in one)."""
-    target = git_top(root) or os.path.realpath(root)
-    for m in re.finditer(r'(?ms)^\s*\[projects\."([^"]+)"\]\s*$(.*?)(?=^\s*\[|\Z)', toml):
-        if re.search(r'trust_level\s*=\s*"trusted"', m.group(2)) and os.path.realpath(m.group(1)) == target:
-            return True
-    return False
+    """Codex trusts by the exact project path (the git root when the folder is in one). On Windows the key is often a
+    literal string — [projects.'C:\\…'] — and the case of the path does not matter."""
+    target = os.path.normcase(git_top(root) or os.path.realpath(root))
+    items = []
+    try:
+        import tomllib  # Python 3.11+
+        items = [(k, v.get("trust_level")) for k, v in tomllib.loads(toml).get("projects", {}).items() if isinstance(v, dict)]
+    except Exception:
+        for m in re.finditer(r"""(?ms)^\s*\[projects\.(?:"((?:[^"\\]|\\.)*)"|'([^']*)')\]\s*$(.*?)(?=^\s*\[|\Z)""", toml):
+            key = m.group(2) if m.group(2) is not None else re.sub(r"\\(.)", r"\1", m.group(1))
+            level = re.search(r'trust_level\s*=\s*"([^"]*)"', m.group(3))
+            items.append((key, level.group(1) if level else None))
+    return any(level == "trusted" and os.path.normcase(os.path.realpath(k)) == target for k, level in items)
 
 
 def proc_info(pid):
@@ -241,7 +247,7 @@ def check_claude(loc, from_hook):
         if not told("claude", "desktop-told"):  # once per project, not in every chat
             out.append(t("claude_desktop", loc))
             common.mark_alive("claude", "desktop-told")
-    elif not alive("claude", "start", 24 * 3600) and not alive("claude", "consent") and not hooks_declined() and not NO_HOOKS:
+    elif not alive("claude", "start", 24 * 3600) and not alive("claude", "consent") and not hooks_declined():
         out.append(t("claude_hooks", loc))
     else:
         out += check_judge("claude", loc, True)
@@ -273,7 +279,7 @@ def check_codex(loc, from_hook):
     if os.path.isfile(os.path.join(root, "AGENTS.override.md")):
         out.append(t("codex_override", loc))
     hooks_on = from_hook or any(alive("codex", n) for n in ("consent", "start", "guard", "stop"))
-    if not hooks_on and not hooks_declined() and not NO_HOOKS:
+    if not hooks_on and not hooks_declined():
         out.append(t("codex_hooks", loc, t("codex_how_trusted" if trusted else "codex_how_untrusted", loc)))
     feat = re.split(r"(?m)^\s*\[features\]\s*$", user_cfg, maxsplit=1)
     if len(feat) == 2 and re.search(r"(?m)^\s*memories\s*=\s*true", re.split(r"(?m)^\s*\[", feat[1], maxsplit=1)[0]):
@@ -316,7 +322,7 @@ def check_qwen(loc, from_hook):
         out.append(t("qwen_memory", loc))
         common.mark_alive("qwen", "memory-told")  # told once per project
     hooks_on = from_hook or any(alive("qwen", n) for n in ("consent", "start", "guard", "stop"))
-    if not hooks_on and not hooks_declined() and not NO_HOOKS:
+    if not hooks_on and not hooks_declined():
         approvals_path = os.environ.get("QWEN_CODE_HOOK_APPROVALS_PATH") or os.path.join(home, "hookApprovals.json")
         try:
             status = (json.loads(read(approvals_path) or "{}").get(root) or {}).get("status")
@@ -328,14 +334,12 @@ def check_qwen(loc, from_hook):
 
 
 def check_judge(prog, loc, hooks_on):
-    if NO_HOOKS:
-        return []
     if os.path.exists(os.path.join(common.ROOT, ".knowledge-check.off")) or \
             os.path.exists(os.path.join(common.ROOT, "tmp", "knowledge-check", prog, "off")):
         return []
     out = []
     cmd = {"claude": "claude", "codex": "codex", "qwen": "qwen"}[prog]
-    if prog != "claude" and not shutil.which(cmd):
+    if prog != "claude" and not common.which(cmd):
         out.append(t("judge_cmd", loc, cmd))
     consent, stop, first = common.mark_time(prog, "consent"), common.mark_time(prog, "stop"), common.mark_time(prog, "consent-first")
     since = stop if stop is not None else first  # the last finished reply, or the first turn if none has finished
@@ -346,7 +350,7 @@ def check_judge(prog, loc, hooks_on):
 
 def check_guard(prog, loc, from_hook):
     """Run by the agent, this check is itself a shell call: an approved raw/ guard has just left its mark."""
-    if NO_HOOKS or from_hook or not os.path.isdir(os.path.join(common.ROOT, "raw")) or guard_declined():
+    if from_hook or not os.path.isdir(os.path.join(common.ROOT, "raw")) or guard_declined():
         return []
     if not (alive(prog, "consent") or alive(prog, "start")):
         return []  # the checks are off altogether — said elsewhere
@@ -360,25 +364,8 @@ def told(prog, mark):
     return not AGAIN and common.mark_time(prog, mark) is not None
 
 
-NO_HOOKS = []  # Windows without working checks: skip whatever advises about them
-
-
-def windows_without_hooks(prog, from_hook):
-    """Windows, and the project's checks have not run here (their commands are written for Mac and Linux)."""
-    return sys.platform == "win32" and not from_hook and \
-        not any(alive(prog, n, 24 * 3600) for n in ("start", "consent", "guard", "stop"))
-
-
 def report(prog, loc, from_hook=False):
-    """Problems for the human, as lines without the prefix. On Windows without working checks: everything that
-    doesn't depend on them, plus a one-time notice instead of advice about checks that can't run there yet."""
-    if windows_without_hooks(prog, from_hook):
-        NO_HOOKS.append(1)
-        out = report_all(prog, loc, from_hook)
-        if not told(prog, "windows-told"):
-            out.insert(0, t("windows", loc))
-            common.mark_alive(prog, "windows-told")
-        return out
+    """Problems for the human, as lines without the prefix."""
     return report_all(prog, loc, from_hook)
 
 

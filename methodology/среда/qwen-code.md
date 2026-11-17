@@ -17,9 +17,9 @@ Qwen Code читает `AGENTS.md` сам: это его файл правил �
 ## Настройки и проверки проекта
 
 - **Файлы настроек:** `.qwen/settings.json` — проверки проекта и стиль ответов; `.qwen/output-styles/plain.md` — файл стиля. Личные — `~/.qwen/settings.json`; решения об одобрении — `~/.qwen/hookApprovals.json`.
-- **Проверки проекта** — записи в `.qwen/settings.json`: `SessionStart` → `hooks/start.py`; `UserPromptSubmit` → `hooks/consent.py`; `PreToolUse` (`write_file|edit|notebook_edit|run_shell_command|monitor`) → `hooks/raw_guard.py`; `Stop` (таймаут 90 с) → `hooks/judge.py`. Команда — `python3 "$QWEN_PROJECT_DIR/hooks/<скрипт>.py" --program qwen`, с проверкой `python3` впереди и `|| true` в конце.
+- **Проверки проекта** — записи в `.qwen/settings.json`: `SessionStart` → `hooks/start.py`; `UserPromptSubmit` → `hooks/consent.py`; `PreToolUse` (`write_file|edit|notebook_edit|run_shell_command|monitor`) → `hooks/raw_guard.py`; `Stop` (таймаут 90 с) → `hooks/judge.py`. Команда — `python3 hooks/<скрипт>.py --program qwen || py -3 … || python … || exit 0`, путь от папки проекта, без двойных кавычек: на Windows она идёт в cmd (`ComSpec` на PowerShell 5.1 не поддерживается).
 - **Выключить все проверки разом** — отклонить их в `/hooks` (отдельного выключателя проекта мы не проверяли).
-- **Одобрение — по содержимому** блока проверок в `.qwen/settings.json` и файла `.env` проекта. Изменилось одно из них (обновление проекта, правка `.env`) — одобрение снято, проверки не загружаются, пока человек не одобрит их заново. Правка самих скриптов `hooks/` одобрения не снимает: команды записей между версиями не меняются. Отклонённые проверки Qwen Code больше не предлагает — включить их можно только в `/hooks`.
+- **Одобрение — по содержимому** блока проверок в `.qwen/settings.json` и файла `.env` проекта. Изменилось одно из них (обновление проекта, правка `.env`) — одобрение снято, проверки не загружаются, пока человек не одобрит их заново. Правка самих скриптов `hooks/` одобрения не снимает; изменённые записи журнал называет в «Как принять». Отклонённые проверки Qwen Code больше не предлагает — включить их можно только в `/hooks`.
 - **Страж `raw/`** видит запись и правку файлов, команды шелла и `monitor`; команды проверяет по шаблонам — поэтому правило «`raw/` неизменяем» главнее стража.
 
 ## Стиль ответов

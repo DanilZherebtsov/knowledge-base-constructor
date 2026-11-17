@@ -47,6 +47,18 @@ def clean_env():
     return {k: v for k, v in os.environ.items() if k not in SESSION_VARS}
 
 
+def kill_tree(p):
+    """Stop the model run with every process it started (wrappers start the model request in a child process)."""
+    try:
+        if os.name == "nt":
+            tk = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32", "taskkill.exe")
+            subprocess.run([tk, "/T", "/F", "/PID", str(p.pid)], capture_output=True, timeout=15)
+        else:
+            os.killpg(p.pid, signal.SIGKILL)
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+
 def ask_model(prog, q):
     """(verdict line, error). Each program asks its own model, isolated: own temp folder, no project hooks."""
     wd = tempfile.mkdtemp(prefix="%s-knowledge-check-" % prog)  # private, empty, one per call: nothing to inherit or reuse
@@ -59,35 +71,34 @@ def ask_model(prog, q):
 def ask_in(prog, q, wd):
     if prog == "claude":
         exe = os.environ.get("CLAUDE_CODE_EXECPATH")
-        exe = exe if exe and os.path.isfile(exe) else shutil.which("claude")
+        exe = exe if exe and os.path.isfile(exe) else common.which("claude")
         if not exe:
             return "", "no-claude"
-        cmd = [exe, "-p", q, "--model", "haiku", "--no-session-persistence", "--setting-sources", "project",
+        cmd = [exe, "-p", "--model", "haiku", "--no-session-persistence", "--setting-sources", "project",
                "--strict-mcp-config", "--tools", ""]
         out_file, timeout = None, 60
     elif prog == "codex":
-        exe = shutil.which("codex")
+        exe = common.which("codex")
         if not exe:
             return "", "no-codex"
         out_file = os.path.join(wd, "last.txt")
         cmd = [exe, "exec", "--ephemeral", "--ignore-user-config", "--skip-git-repo-check", "-s", "read-only",
-               "-c", "model_reasoning_effort=\"low\"", "-o", out_file, q]
+               "-c", "model_reasoning_effort=\"low\"", "-o", out_file, "-"]
         timeout = 60
     else:
-        exe = shutil.which("qwen")
+        exe = common.which("qwen")
         if not exe:
             return "", "no-qwen"
-        cmd = [exe, "--safe-mode", "-p", q, "--output-format", "text", "--chat-recording", "false", "--max-session-turns", "1"]
+        cmd = [exe, "--safe-mode", "-p", "Answer as asked above.", "--output-format", "text", "--chat-recording", "false", "--max-session-turns", "1"]
         out_file, timeout = None, 80
-    p = subprocess.Popen(cmd, cwd=wd, env=clean_env(), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                         text=True, encoding="utf-8", errors="replace", start_new_session=True)
+    # The question goes on stdin, never as an argument: on Windows npm wrappers (.cmd) run through cmd.exe, where text
+    # from the reply could turn into commands, lose its line breaks or outgrow the command line.
+    p = subprocess.Popen(cmd, cwd=wd, env=clean_env(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                         text=True, encoding="utf-8", errors="replace", start_new_session=(os.name != "nt"))
     try:
-        out, _ = p.communicate(timeout=timeout)
+        out, _ = p.communicate(input=q, timeout=timeout)
     except subprocess.TimeoutExpired:
-        try:
-            os.killpg(p.pid, signal.SIGKILL)  # the whole group: wrappers start the model request in a child process
-        except OSError:
-            pass
+        kill_tree(p)
         p.communicate()
         raise
     r = subprocess.CompletedProcess(cmd, p.returncode, out, "")

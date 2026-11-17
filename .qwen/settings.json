@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "command -v python3 >/dev/null 2>&1 && python3 \"$QWEN_PROJECT_DIR/hooks/start.py\" --program qwen 2>/dev/null || true",
+            "command": "python3 hooks/start.py --program qwen || py -3 hooks/start.py --program qwen || python hooks/start.py --program qwen || exit 0",
             "timeout": 30
           }
         ]
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "command -v python3 >/dev/null 2>&1 && python3 \"$QWEN_PROJECT_DIR/hooks/consent.py\" --program qwen 2>/dev/null || true",
+            "command": "python3 hooks/consent.py --program qwen || py -3 hooks/consent.py --program qwen || python hooks/consent.py --program qwen || exit 0",
             "timeout": 20
           }
         ]
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "command -v python3 >/dev/null 2>&1 && python3 \"$QWEN_PROJECT_DIR/hooks/raw_guard.py\" --program qwen 2>/dev/null || true",
+            "command": "python3 hooks/raw_guard.py --program qwen || py -3 hooks/raw_guard.py --program qwen || python hooks/raw_guard.py --program qwen || exit 0",
             "timeout": 20
           }
         ]
@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "command -v python3 >/dev/null 2>&1 && python3 \"$QWEN_PROJECT_DIR/hooks/judge.py\" --program qwen 2>/dev/null || true",
+            "command": "python3 hooks/judge.py --program qwen || py -3 hooks/judge.py --program qwen || python hooks/judge.py --program qwen || exit 0",
             "timeout": 90
           }
         ]

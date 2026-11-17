@@ -10,12 +10,12 @@ Claude Code читает `CLAUDE.md`, а не `AGENTS.md`: `AGENTS.md` сам п
 
 ## Первая настройка
 
-В Claude Code — ничего: проверки проекта (`hooks/`) запускаются сами по записям в `.claude/settings.json` (проверено на 2.1.325). Нужен `python3`. В Claude Desktop — строка для поля инструкций проекта (её текст — раздел «Claude Desktop» ниже).
+В Claude Code — ничего: проверки проекта (`hooks/`) запускаются сами по записям в `.claude/settings.json` (проверено на 2.1.325). Нужен Python 3 — `python3`, `python` или `py`. В Claude Desktop — строка для поля инструкций проекта (её текст — раздел «Claude Desktop» ниже).
 
 ## Настройки и проверки проекта
 
 - **Файлы настроек:** `.claude/settings.json` — общий, в проекте (проверки и стиль ответов); личные — `.claude/settings.local.json` (только на этом компьютере, не в коммит) и `~/.claude/settings.json`.
-- **Проверки проекта** — записи в `.claude/settings.json`: `SessionStart` (с `matcher` `startup|resume|clear|compact` — и после сжатия контекста) → `hooks/start.py`; `UserPromptSubmit` → `hooks/consent.py`; `PreToolUse` (`Write|Edit|MultiEdit|NotebookEdit|Bash|Monitor`) → `hooks/raw_guard.py`; `Stop` → `hooks/judge.py`. Команда — `python3 "$CLAUDE_PROJECT_DIR/hooks/<скрипт>.py" --program claude`, с проверкой `python3` впереди и `|| true` в конце.
+- **Проверки проекта** — записи в `.claude/settings.json`: `SessionStart` (с `matcher` `startup|resume|clear|compact` — и после сжатия контекста) → `hooks/start.py`; `UserPromptSubmit` → `hooks/consent.py`; `PreToolUse` (`Write|Edit|MultiEdit|NotebookEdit|Bash|Monitor|PowerShell`, `"onFailure": "continue"`) → `hooks/raw_guard.py`; `Stop` → `hooks/judge.py`. Команда — одна строка для bash (до `#>`) и PowerShell (после `#>;`), Python — первый найденный. На Windows без Git Bash Claude Code раз за сеанс советует поставить Git for Windows — ожидаемо, записи не менять.
 - **Одобрять не нужно:** Claude Code запускает проверки проекта без окна одобрения.
 - **Выключены все разом** — ключ `disableAllHooks: true` в любом из файлов настроек. Флаг — выбор человека: не трогать, назвать.
 - **Страж `raw/`** видит правки файлов и команды шелла; команды проверяет по шаблонам — поэтому правило «`raw/` неизменяем» главнее стража.

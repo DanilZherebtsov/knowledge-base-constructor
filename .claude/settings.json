@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "command -v python3 >/dev/null 2>&1 && python3 \"$CLAUDE_PROJECT_DIR/hooks/start.py\" --program claude 2>/dev/null || true"
+            "command": "set -- `# <#`; { python3 \"${CLAUDE_PROJECT_DIR}/hooks/start.py\" --program claude || python \"${CLAUDE_PROJECT_DIR}/hooks/start.py\" --program claude || py -3 \"${CLAUDE_PROJECT_DIR}/hooks/start.py\" --program claude; } 2>/dev/null; true #>; $f=Join-Path $env:CLAUDE_PROJECT_DIR 'hooks/start.py'; py -3 $f --program claude 2>$null; if($LASTEXITCODE -ne 0){ python3 $f --program claude 2>$null }; if($LASTEXITCODE -ne 0){ python $f --program claude 2>$null }; exit 0"
           }
         ]
       }
@@ -17,18 +17,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "command -v python3 >/dev/null 2>&1 && python3 \"$CLAUDE_PROJECT_DIR/hooks/consent.py\" --program claude 2>/dev/null || true"
+            "command": "set -- `# <#`; { python3 \"${CLAUDE_PROJECT_DIR}/hooks/consent.py\" --program claude || python \"${CLAUDE_PROJECT_DIR}/hooks/consent.py\" --program claude || py -3 \"${CLAUDE_PROJECT_DIR}/hooks/consent.py\" --program claude; } 2>/dev/null; true #>; $f=Join-Path $env:CLAUDE_PROJECT_DIR 'hooks/consent.py'; py -3 $f --program claude 2>$null; if($LASTEXITCODE -ne 0){ python3 $f --program claude 2>$null }; if($LASTEXITCODE -ne 0){ python $f --program claude 2>$null }; exit 0"
           }
         ]
       }
     ],
     "PreToolUse": [
       {
-        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash|Monitor",
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash|Monitor|PowerShell",
         "hooks": [
           {
             "type": "command",
-            "command": "command -v python3 >/dev/null 2>&1 && python3 \"$CLAUDE_PROJECT_DIR/hooks/raw_guard.py\" --program claude 2>/dev/null || true",
+            "command": "set -- `# <#`; { python3 \"${CLAUDE_PROJECT_DIR}/hooks/raw_guard.py\" --program claude || python \"${CLAUDE_PROJECT_DIR}/hooks/raw_guard.py\" --program claude || py -3 \"${CLAUDE_PROJECT_DIR}/hooks/raw_guard.py\" --program claude; } 2>/dev/null; true #>; $f=Join-Path $env:CLAUDE_PROJECT_DIR 'hooks/raw_guard.py'; py -3 $f --program claude 2>$null; if($LASTEXITCODE -ne 0){ python3 $f --program claude 2>$null }; if($LASTEXITCODE -ne 0){ python $f --program claude 2>$null }; exit 0",
             "onFailure": "continue"
           }
         ]
@@ -40,7 +40,7 @@
           {
             "type": "command",
             "timeout": 90,
-            "command": "command -v python3 >/dev/null 2>&1 && python3 \"$CLAUDE_PROJECT_DIR/hooks/judge.py\" --program claude 2>/dev/null || true"
+            "command": "set -- `# <#`; { python3 \"${CLAUDE_PROJECT_DIR}/hooks/judge.py\" --program claude || python \"${CLAUDE_PROJECT_DIR}/hooks/judge.py\" --program claude || py -3 \"${CLAUDE_PROJECT_DIR}/hooks/judge.py\" --program claude; } 2>/dev/null; true #>; $f=Join-Path $env:CLAUDE_PROJECT_DIR 'hooks/judge.py'; py -3 $f --program claude 2>$null; if($LASTEXITCODE -ne 0){ python3 $f --program claude 2>$null }; if($LASTEXITCODE -ne 0){ python $f --program claude 2>$null }; exit 0"
           }
         ]
       }

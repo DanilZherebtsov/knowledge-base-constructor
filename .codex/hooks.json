@@ -6,6 +6,7 @@
           {
             "type": "command",
             "command": "d=\"$PWD\"; while [ \"$d\" != / ] && [ ! -f \"$d/.codex/hooks.json\" ]; do d=$(dirname \"$d\"); done; command -v python3 >/dev/null 2>&1 && python3 \"$d/hooks/start.py\" --program codex 2>/dev/null || true",
+            "commandWindows": "$d=(Get-Location).ProviderPath; while($d -and -not (Test-Path -LiteralPath (Join-Path $d '.codex/hooks.json'))){ $d=Split-Path -Parent $d }; if(-not $d){ exit 0 }; $f=Join-Path $d 'hooks/start.py'; py -3 $f --program codex 2>$null; if($LASTEXITCODE -ne 0){ python3 $f --program codex 2>$null }; if($LASTEXITCODE -ne 0){ python $f --program codex 2>$null }; exit 0",
             "timeout": 30
           }
         ]
@@ -17,6 +18,7 @@
           {
             "type": "command",
             "command": "d=\"$PWD\"; while [ \"$d\" != / ] && [ ! -f \"$d/.codex/hooks.json\" ]; do d=$(dirname \"$d\"); done; command -v python3 >/dev/null 2>&1 && python3 \"$d/hooks/consent.py\" --program codex 2>/dev/null || true",
+            "commandWindows": "$d=(Get-Location).ProviderPath; while($d -and -not (Test-Path -LiteralPath (Join-Path $d '.codex/hooks.json'))){ $d=Split-Path -Parent $d }; if(-not $d){ exit 0 }; $f=Join-Path $d 'hooks/consent.py'; py -3 $f --program codex 2>$null; if($LASTEXITCODE -ne 0){ python3 $f --program codex 2>$null }; if($LASTEXITCODE -ne 0){ python $f --program codex 2>$null }; exit 0",
             "timeout": 20
           }
         ]
@@ -29,6 +31,7 @@
           {
             "type": "command",
             "command": "d=\"$PWD\"; while [ \"$d\" != / ] && [ ! -f \"$d/.codex/hooks.json\" ]; do d=$(dirname \"$d\"); done; command -v python3 >/dev/null 2>&1 && python3 \"$d/hooks/raw_guard.py\" --program codex 2>/dev/null || true",
+            "commandWindows": "$d=(Get-Location).ProviderPath; while($d -and -not (Test-Path -LiteralPath (Join-Path $d '.codex/hooks.json'))){ $d=Split-Path -Parent $d }; if(-not $d){ exit 0 }; $f=Join-Path $d 'hooks/raw_guard.py'; py -3 $f --program codex 2>$null; if($LASTEXITCODE -ne 0){ python3 $f --program codex 2>$null }; if($LASTEXITCODE -ne 0){ python $f --program codex 2>$null }; exit 0",
             "timeout": 20
           }
         ]
@@ -40,6 +43,7 @@
           {
             "type": "command",
             "command": "d=\"$PWD\"; while [ \"$d\" != / ] && [ ! -f \"$d/.codex/hooks.json\" ]; do d=$(dirname \"$d\"); done; command -v python3 >/dev/null 2>&1 && python3 \"$d/hooks/judge.py\" --program codex 2>/dev/null || true",
+            "commandWindows": "$d=(Get-Location).ProviderPath; while($d -and -not (Test-Path -LiteralPath (Join-Path $d '.codex/hooks.json'))){ $d=Split-Path -Parent $d }; if(-not $d){ exit 0 }; $f=Join-Path $d 'hooks/judge.py'; py -3 $f --program codex 2>$null; if($LASTEXITCODE -ne 0){ python3 $f --program codex 2>$null }; if($LASTEXITCODE -ne 0){ python $f --program codex 2>$null }; exit 0",
             "timeout": 90
           }
         ]

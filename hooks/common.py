@@ -4,13 +4,17 @@
 Every hook is called as `python3 hooks/<name>.py --program claude|codex|qwen` from that program's own
 settings (.claude/settings.json, .codex/hooks.json, .qwen/settings.json). The project root is the folder
 above hooks/ (where this file lives), not the event's cwd. A hook prints at most one JSON object on stdout
-and nothing on stderr: Codex drops plain text that starts with "[", Qwen shows stderr to the human.
+and nothing on stderr: Codex drops plain text that starts with "[", Qwen shows stderr to the human — so under
+Qwen a hook always prints exactly one object ({} when it has nothing to say). The JSON is ASCII only: a Windows
+console code page can't carry Cyrillic, and a lost deny would let the call through.
 Errors go to tmp/knowledge-check/<program>/stderr.log. State and "alive" marks are kept per program, so a
 run in one program never looks like the checks of another one working. Identical in the RU and EN editions.
 """
-import datetime, json, os, re, sys
+import atexit, datetime, json, os, re, sys
 
 sys.dont_write_bytecode = True
+# Windows looks for a program in the current folder first: a planted git.bat or find.exe would run before approval.
+os.environ.setdefault("NoDefaultCurrentDirectoryInExePath", "1")
 HOOKS = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HOOKS)
 PROGRAMS = ("claude", "codex", "qwen")
@@ -24,7 +28,19 @@ def program():
     if name not in PROGRAMS:
         log_error("unknown", "%s called without --program claude|codex|qwen" % os.path.basename(sys.argv[0]))
         sys.exit(0)
+    if name == "qwen":
+        atexit.register(_qwen_answer)
     return name
+
+
+def _qwen_answer():
+    """Qwen shows stderr to the human when stdout is empty (the shell's own "not found" lines included): always answer."""
+    if not _emitted:
+        try:
+            sys.stdout.write("{}\n")
+            sys.stdout.flush()
+        except Exception:
+            pass
 
 
 def locale():
@@ -89,11 +105,29 @@ def mark_time(prog, name):
     return os.path.getmtime(p) if os.path.isfile(p) else None
 
 
+def which(name, not_system=False):
+    """A program from PATH only, never from the current folder (shutil.which before Python 3.12 searches it on Windows).
+    not_system: skip Windows' own folder — its find.exe and sort.exe are other programs than the Unix ones."""
+    exts = os.environ.get("PATHEXT", ".EXE;.BAT;.CMD").lower().split(";") if os.name == "nt" else [""]
+    here = os.path.normcase(os.path.abspath(os.getcwd()))
+    system = os.path.normcase(os.environ.get("SystemRoot", r"C:\Windows")) if os.name == "nt" else None
+    for d in os.environ.get("PATH", "").split(os.pathsep):
+        if not d or d == "." or os.path.normcase(os.path.abspath(d)) == here:
+            continue
+        if not_system and system and os.path.normcase(os.path.abspath(d)).startswith(system):
+            continue
+        for e in exts:
+            p = os.path.join(d, name + e)
+            if os.path.isfile(p) and os.access(p, os.X_OK):
+                return p
+    return None
+
+
 def read_event():
     try:
         if sys.stdin.isatty():
             return {}
-        raw = sys.stdin.buffer.read().decode("utf-8", "replace")
+        raw = sys.stdin.buffer.read().decode("utf-8-sig", "replace")  # a BOM from a Windows shell is not part of the JSON
         e = json.loads(raw) if raw.strip() else {}
         return e if isinstance(e, dict) else {}
     except Exception:
@@ -105,7 +139,7 @@ def emit(obj):
     if _emitted:
         return
     _emitted.append(1)
-    sys.stdout.write(json.dumps(obj, ensure_ascii=False) + "\n")
+    sys.stdout.write(json.dumps(obj) + "\n")  # ASCII: \u escapes survive any console code page
     sys.stdout.flush()
 
 
