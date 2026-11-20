@@ -50,33 +50,61 @@ M = {
                        "нарочно — переименуй или удали его.",
                        "`AGENTS.override.md` sits next to `AGENTS.md` — Codex reads it instead of the project's rules. If that "
                        "is not on purpose, rename or remove it."),
-    "codex_hooks": ("в этом проекте выключены автоматические проверки — без них я могу не заметить устаревший план работ или "
-                    "забыть предложить сохранить важное. Включить один раз: %s. Не хочешь включать — скажи, я запишу это и больше "
-                    "не буду напоминать.",
-                    "the project's automatic checks are off — without them I may miss an outdated plan or forget to offer saving. "
-                    "Turn them on once: %s. If you do not want them, say so — I will note it and stop reminding."),
-    "codex_how_trusted": ("набрать в Codex `/hooks` и одобрить проверки этого проекта, затем перезапустить Codex",
-                          "type `/hooks` in Codex and approve this project's checks, then restart Codex"),
-    "codex_how_untrusted": ("сначала доверить эту папку (Codex спрашивает при открытии; нажать «Trust and continue», не «Open "
-                            "restricted»), затем набрать `/hooks` и одобрить проверки этого проекта, затем перезапустить Codex",
-                            "first trust this folder (Codex asks when it opens; choose «Trust and continue», not «Open restricted»), "
-                            "then type `/hooks` and approve this project's checks, then restart Codex"),
+    "codex_hooks": ("в Codex для этого проекта ещё не включены напоминания мне (об устаревшем плане, о "
+                   "профилактике, о том, чтобы спрашивать тебя перед записью), подсказка, если я забыл "
+                   "предложить записать важное, и защита исходных документов в папке `raw/` от моих правок. "
+                   "Чтобы включить: %s. После некоторых обновлений проекта это нужно повторить. Подсказка "
+                   "иногда коротко запускает Codex — это тратит лимит или деньги; жалко — скажи «выключи "
+                   "проверку памяти», остальное останется. Не хочешь ничего из этого — скажи, и я больше не "
+                   "буду напоминать ни здесь, ни в других программах.",
+                   "Codex has not yet turned on, for this project, reminders to me (of an outdated plan, of "
+                   "maintenance, to ask you before saving), a prompt when I forget to offer saving something "
+                   "important, and protection of the source documents in `raw/` from my edits. To turn them "
+                   "on: %s. After some project updates this has to be repeated. The prompt sometimes briefly "
+                   "runs Codex — this uses your limit or money; if you mind, say 'turn the memory check off' "
+                   "and the rest stays. If you want none of this, say so and I will stop reminding — here and"
+                   " in other programs."),
+    "codex_how_trusted": ("набери `/hooks`, одобри то, что относится к этому проекту, и перезапусти Codex",
+                         "type `/hooks`, approve what belongs to this project and restart Codex"),
+    "codex_how_untrusted": ("сначала доверь эту папку (Codex спрашивает при открытии — выбери «Trust and "
+                           "continue», не «Open restricted»), затем набери `/hooks`, одобри то, что относится"
+                           " к этому проекту, и перезапусти Codex",
+                           "first trust this folder (Codex asks when it opens — choose \"Trust and continue\", "
+                           "not \"Open restricted\"), then type `/hooks`, approve what belongs to this project "
+                           "and restart Codex"),
     "codex_restart": ("если настройки Codex меняли недавно — перезапусти Codex: до перезапуска он читает старые настройки.",
                       "if Codex's settings were changed recently, restart Codex: until then it reads the old settings."),
     "codex_memory": ("встроенная память Codex включена: то, что она запоминает, идёт мимо памяти проекта (папки `wiki/`) и в других "
                      "программах не видно. Важное прошу записывать в память проекта — скажи «запомни это».",
                      "Codex's built-in memory is on: what it remembers bypasses the project's memory (the `wiki/` folder) and is "
                      "not seen in other programs. Ask me to save what matters to project memory — say 'remember this'."),
-    "qwen_rejected": ("проверки этого проекта в Qwen Code отклонены и больше не предлагаются. Включить: набрать `/hooks` в Qwen "
-                      "Code и одобрить проверки этого проекта.",
-                      "this project's checks were rejected in Qwen Code and are not offered again. To turn them on: type `/hooks` "
-                      "in Qwen Code and approve this project's checks."),
-    "qwen_pending": ("проверки этого проекта в Qwen Code не одобрены (или изменились — так бывает после обновления проекта и после "
-                     "правки файла `.env`). Одобрить один раз: открыть Qwen Code в папке проекта в окне и согласиться, когда он "
-                     "спросит о проверках проекта, или набрать `/hooks`.",
-                     "this project's checks are not approved in Qwen Code (or they changed — this happens after a project update "
-                     "and after editing the `.env` file). Approve once: open Qwen Code in the project folder interactively and "
-                     "agree when it asks about the project's checks, or type `/hooks`."),
+    "qwen_rejected": ("в Qwen Code для этого проекта отклонены напоминания мне (об устаревшем плане, о "
+                     "профилактике, о том, чтобы спрашивать тебя перед записью), подсказка, если я забыл "
+                     "предложить записать важное, и защита исходных документов в папке `raw/` от моих правок,"
+                     " и сам он больше не спросит. Включить: набери `/hooks` и одобри то, что относится к "
+                     "этому проекту.",
+                     "in Qwen Code, for this project, these were declined: reminders to me (of an outdated "
+                     "plan, of maintenance, to ask you before saving), a prompt when I forget to offer saving"
+                     " something important, and protection of the source documents in `raw/` from my edits; "
+                     "it won't ask again. To turn them on: type `/hooks` and approve what belongs to this "
+                     "project."),
+    "qwen_pending": ("в Qwen Code для этого проекта ещё не включены напоминания мне (об устаревшем плане, о "
+                    "профилактике, о том, чтобы спрашивать тебя перед записью), подсказка, если я забыл "
+                    "предложить записать важное, и защита исходных документов в папке `raw/` от моих правок. "
+                    "Чтобы включить: набери `/hooks` и одобри то, что относится к этому проекту, или "
+                    "согласись, когда Qwen Code сам спросит при открытии. После некоторых обновлений проекта "
+                    "и после правки файла `.env` это нужно повторить. Подсказка иногда коротко запускает Qwen"
+                    " Code — это тратит лимит или деньги; жалко — скажи «выключи проверку памяти», остальное "
+                    "останется. Не хочешь ничего из этого — скажи, и я больше не буду напоминать ни здесь, ни"
+                    " в других программах.",
+                    "Qwen Code has not yet turned on, for this project, reminders to me (of an outdated plan,"
+                    " of maintenance, to ask you before saving), a prompt when I forget to offer saving "
+                    "something important, and protection of the source documents in `raw/` from my edits. To "
+                    "turn them on: type `/hooks` and approve what belongs to this project, or agree when Qwen"
+                    " Code asks on opening. After some project updates and after editing the `.env` file this"
+                    " has to be repeated. The prompt sometimes briefly runs Qwen Code — this uses your limit "
+                    "or money; if you mind, say 'turn the memory check off' and the rest stays. If you want "
+                    "none of this, say so and I will stop reminding — here and in other programs."),
     "qwen_folder": ("Qwen Code запущен не в папке проекта — проверки проекта он берёт только из папки запуска. Открой Qwen Code "
                     "в папке проекта.",
                     "Qwen Code was started outside the project folder — it takes the project's checks only from the folder it "
@@ -93,19 +121,20 @@ M = {
                     "write a note that bypasses the project memory (the `wiki/` folder). To turn it off — `\"memory\": "
                     "{\"enableManagedAutoMemory\": false}` in Qwen Code's settings; please ask me to save what matters to project "
                     "memory — say 'remember this'. I won't mention this again."),
-    "guard": ("автоматическая проверка, не дающая мне править присланные документы в папке `raw/`, не работает — похоже, она "
-              "не одобрена. Правки этих документов я не делаю и без неё.",
-              "the automatic check that stops me from editing received documents in `raw/` is not working — it looks "
-              "unapproved. I do not edit those documents without it either."),
+    "guard": ("защита исходных документов в папке `raw/` от моих правок не работает — похоже, она не включена."
+             " Эти документы я не правлю и без неё.",
+             "the protection of the source documents in `raw/` from my edits is not working — it seems to be "
+             "off. I do not edit those documents without it either."),
     "judge_cmd": ("проверка моих ответов не сможет работать: нет команды `%s` там, где её ищут проверки проекта. Поставить её "
                   "или выключить проверку словами «выключи проверку памяти».",
                   "the answer check cannot work: the `%s` command is not where the project's checks look for it. Install it "
                   "or switch the check off by saying 'turn the memory check off'."),
-    "judge_dead": ("проверка моих ответов (подсказка сохранить важное), похоже, не работает: остальные проверки проекта "
-                   "срабатывают, а она — нет. Обычно её одобрение снято после обновления проверок: одобрить все проверки "
-                   "проекта заново.",
-                   "the answer check (the offer to save what matters) seems not to work: the project's other checks run, it does "
-                   "not. Usually its approval was dropped after the checks were updated: approve all of the project's checks again."),
+    "judge_dead": ("подсказка, если я забыл предложить записать важное, похоже, не работает: остальное "
+                  "срабатывает, а она — нет. Обычно так бывает после обновления проекта: набери `/hooks` и "
+                  "заново одобри то, что относится к этому проекту (в Codex — затем перезапусти его).",
+                  "the prompt when I forget to offer saving something important seems not to work: the rest "
+                  "runs, it does not. Usually this happens after a project update: type `/hooks` and approve "
+                  "again what belongs to this project (in Codex — then restart it)."),
     "migration": ("переход проекта на версию 3.0.0 не закончен — продолжи профилактику (скажи «сделай профилактику»).",
                   "the project's move to 3.0.0 is not finished — continue the maintenance (say 'run maintenance')."),
 }
@@ -284,9 +313,9 @@ def check_codex(loc, from_hook):
     feat = re.split(r"(?m)^\s*\[features\]\s*$", user_cfg, maxsplit=1)
     if len(feat) == 2 and re.search(r"(?m)^\s*memories\s*=\s*true", re.split(r"(?m)^\s*\[", feat[1], maxsplit=1)[0]):
         out.append(t("codex_memory", loc))
-    try:
+    try:  # the approval advice above already says to restart
         cfg_mtime = os.path.getmtime(os.path.join(home, "config.toml"))
-        if time.time() - cfg_mtime < 86400 and started_before("codex", cfg_mtime):
+        if (hooks_on or hooks_declined()) and time.time() - cfg_mtime < 86400 and started_before("codex", cfg_mtime):
             out.append(t("codex_restart", loc))
     except OSError:
         pass
